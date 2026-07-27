@@ -394,8 +394,9 @@ impl WgpuRenderer {
 
     /// Build an orthographic view_proj for top-left origin pixel space.
     ///
-    /// Pixel (0,0) maps to clip-space top-left (-1, -1) in wgpu's
-    /// Y-down NDC. Pixel (width, height) maps to (1, 1).
+    /// Maps pixel (0,0) to clip-space top-left (-1, -1) by flipping the
+    /// vertical axis against wgpu's Y-up NDC. Pixel (width, height)
+    /// maps to (1, 1).
     pub fn ortho(width: f32, height: f32) -> Mat4 {
         Mat4::orthographic_rh(0.0, width, 0.0, height, -1.0, 1.0)
     }
