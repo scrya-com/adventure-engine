@@ -1,0 +1,30 @@
+# Build artifacts
+/target
+**/target
+**/*.rs.bk
+
+# Editor
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cargo lock — keep for binaries, ignore for libraries.
+# This repo ships an eventual binary (the engine example), so the lock IS committed.
+# Cargo.lock
+
+# Logs / profiling
+*.trace
+*.perf
+flamegraph.svg
+
+# Assets that are too large for git LFS-less storage
+*.avl
+*.pak
+assets/**/*.png.bak
