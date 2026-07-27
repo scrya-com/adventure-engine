@@ -9,5 +9,8 @@ description = "Gameplay tags, variable table, hierarchical state machine"
 [dependencies]
 adventure-core.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 smol_str.workspace = true
-string-interner.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

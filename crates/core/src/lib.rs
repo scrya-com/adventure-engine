@@ -5,14 +5,19 @@
 //! - [`AssetId`] — opaque path-hash identifier for all asset references
 //! - [`Error`] and [`Result`] — unified error type for the engine
 //! - Math re-exports from [`glam`]
-//! - Logging helpers via [`tracing`]
-//! - Interning helpers via [`smol_str`]
+//! - Logging helpers via [`tracing`] + the [`logging`] module
+//! - Interning via the [`interner`] module (mirrors UE's `FName`)
 //!
 //! See `docs/ARCHITECTURE.md` for where this crate sits in the dependency graph.
 
 #![deny(missing_docs)]
 
 use std::fmt;
+
+pub mod interner;
+pub mod logging;
+
+pub use interner::{Interner, Symbol, shared};
 
 /// Re-export of [`glam`] math types.
 ///

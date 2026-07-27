@@ -11,3 +11,7 @@ adventure-core.workspace = true
 serde.workspace = true
 ron.workspace = true
 smol_str.workspace = true
+glam.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
