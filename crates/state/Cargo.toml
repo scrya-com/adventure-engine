@@ -1,0 +1,13 @@
+[package]
+name = "adventure-state"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Gameplay tags, variable table, hierarchical state machine"
+
+[dependencies]
+adventure-core.workspace = true
+serde.workspace = true
+smol_str.workspace = true
+string-interner.workspace = true

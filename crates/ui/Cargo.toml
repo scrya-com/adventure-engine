@@ -1,0 +1,13 @@
+[package]
+name = "adventure-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Immediate-mode menus/dialog + retained HUD"
+
+[dependencies]
+adventure-core.workspace = true
+adventure-render2d.workspace = true
+adventure-input.workspace = true
+adventure-assets.workspace = true

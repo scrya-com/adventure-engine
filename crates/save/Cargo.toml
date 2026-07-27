@@ -1,0 +1,16 @@
+[package]
+name = "adventure-save"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Versioned save format with per-subsystem custom versions and migrations"
+
+[dependencies]
+adventure-core.workspace = true
+serde.workspace = true
+rmp-serde = "1"
+thiserror.workspace = true
+smol_str.workspace = true
+smallvec.workspace = true
+sha1 = "0.10"

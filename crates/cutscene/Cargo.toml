@@ -1,0 +1,12 @@
+[package]
+name = "adventure-cutscene"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Timeline/sequencer for cutscenes — inspired by UE MovieScreen"
+
+[dependencies]
+adventure-core.workspace = true
+serde.workspace = true
+ron.workspace = true

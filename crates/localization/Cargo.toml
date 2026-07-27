@@ -1,0 +1,13 @@
+[package]
+name = "adventure-localization"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "fluent-rs wrapper for i18n — replaces UE FText"
+
+[dependencies]
+adventure-core.workspace = true
+fluent = "0.16"
+fluent-bundle = "0.15"
+unic-langid = "0.9"

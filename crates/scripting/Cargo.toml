@@ -1,0 +1,13 @@
+[package]
+name = "adventure-scripting"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Rhai scripting wrapper — conditions, side effects, action queue"
+
+[dependencies]
+adventure-core.workspace = true
+adventure-state.workspace = true
+rhai = { version = "1.19", features = ["sync"] }
+thiserror.workspace = true

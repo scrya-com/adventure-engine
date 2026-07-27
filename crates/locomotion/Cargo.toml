@@ -1,0 +1,16 @@
+[package]
+name = "adventure-locomotion"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Locomotion SDK: walk graphs, plant FSM, retargeting, ring compass — forked from scene-engine"
+
+[dependencies]
+adventure-core.workspace = true
+adventure-graph.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+approx = "0.5"

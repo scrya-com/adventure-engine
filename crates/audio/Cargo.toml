@@ -1,0 +1,13 @@
+[package]
+name = "adventure-audio"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "kira-based 4-bus audio engine: Master/Music/Sfx/Voice"
+
+[dependencies]
+adventure-core.workspace = true
+kira = "0.9"
+thiserror.workspace = true
+crossbeam-channel = "0.5"

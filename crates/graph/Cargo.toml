@@ -1,0 +1,9 @@
+[package]
+name = "adventure-graph"
+version.workspace = true
+edition.workspace = true
+license = "MIT OR Apache-2.0"
+authors = ["Pixel Point (original), John D. Pope (vendored fork)"]
+description = "Ring arc + multi-hop route planning — vendored from aval/flutter/rust/aval_graph"
+
+[dependencies]

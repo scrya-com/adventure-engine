@@ -1,0 +1,29 @@
+[package]
+name = "adventure-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Main loop, owns World + systems + plugin registry"
+
+[dependencies]
+adventure-core.workspace = true
+adventure-locomotion.workspace = true
+adventure-graph.workspace = true
+adventure-scene.workspace = true
+adventure-state.workspace = true
+adventure-dialogue.workspace = true
+adventure-inventory.workspace = true
+adventure-save.workspace = true
+adventure-assets.workspace = true
+adventure-render2d.workspace = true
+adventure-audio.workspace = true
+adventure-input.workspace = true
+adventure-ui.workspace = true
+adventure-scripting.workspace = true
+adventure-cutscene.workspace = true
+adventure-localization.workspace = true
+bevy_ecs = "0.14"
+bevy_tasks = "0.14"
+tracing.workspace = true
+thiserror.workspace = true

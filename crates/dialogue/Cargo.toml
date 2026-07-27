@@ -1,0 +1,15 @@
+[package]
+name = "adventure-dialogue"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Dialog trees with Rhai-evaluated conditions and side effects"
+
+[dependencies]
+adventure-core.workspace = true
+adventure-state.workspace = true
+adventure-scripting.workspace = true
+serde.workspace = true
+ron.workspace = true
+smol_str.workspace = true

@@ -1,0 +1,12 @@
+[package]
+name = "adventure-input"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "winit event dispatch + hotspot picking + Interactive trait"
+
+[dependencies]
+adventure-core.workspace = true
+adventure-scene.workspace = true
+winit = "0.30"
