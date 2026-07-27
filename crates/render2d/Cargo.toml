@@ -12,7 +12,12 @@ adventure-assets.workspace = true
 wgpu = "22"
 guillotiere = "0.6"
 bitflags = "2"
+bytemuck = { version = "1", features = ["derive"] }
 image = { version = "0.25", default-features = false, features = ["png", "webp"] }
 smallvec.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+glam.workspace = true
+
+[dev-dependencies]
+pollster = "0.3"

@@ -1,0 +1,22 @@
+[package]
+name = "example-02-sprite"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Phase 2 example — loads a PNG and renders it with tint + alpha"
+publish.workspace = true
+
+[dependencies]
+adventure-render2d = { path = "../../crates/render2d" }
+adventure-core = { path = "../../crates/core" }
+winit = { workspace = true, features = ["rwh_06"] }
+wgpu = "22"
+pollster = { workspace = true }
+env_logger = { workspace = true }
+image = { version = "0.25", default-features = false, features = ["png"] }
+bytemuck = "1"
+glam = { workspace = true }
+
+[lints.rust]
+unexpected_cfgs = { level = "allow" }
