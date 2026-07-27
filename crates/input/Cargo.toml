@@ -6,7 +6,15 @@ license.workspace = true
 authors.workspace = true
 description = "winit event dispatch + hotspot picking + Interactive trait"
 
+[features]
+default = ["winit"]
+# Translate winit events into InputEvent. Disable for headless tests.
+winit = ["dep:winit"]
+
 [dependencies]
 adventure-core.workspace = true
 adventure-scene.workspace = true
-winit = "0.30"
+smallvec.workspace = true
+smol_str.workspace = true
+tracing.workspace = true
+winit = { workspace = true, optional = true }

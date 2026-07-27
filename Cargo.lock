@@ -118,6 +118,9 @@ version = "0.1.0"
 dependencies = [
  "adventure-core",
  "adventure-scene",
+ "smallvec",
+ "smol_str",
+ "tracing",
  "winit",
 ]
 
@@ -1179,6 +1182,24 @@ dependencies = [
  "glam",
  "image",
  "pollster",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
+name = "example-03-hotspot"
+version = "0.1.0"
+dependencies = [
+ "adventure-core",
+ "adventure-input",
+ "adventure-render2d",
+ "adventure-scene",
+ "env_logger",
+ "glam",
+ "pollster",
+ "smol_str",
+ "tracing",
+ "tracing-subscriber",
  "wgpu",
  "winit",
 ]

@@ -1,0 +1,25 @@
+[package]
+name = "example-03-hotspot"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Phase 3 example — hover changes cursor, click logs to console"
+publish.workspace = true
+
+[dependencies]
+adventure-input = { path = "../../crates/input" }
+adventure-scene = { path = "../../crates/scene" }
+adventure-core = { path = "../../crates/core" }
+adventure-render2d = { path = "../../crates/render2d" }
+winit = { workspace = true, features = ["rwh_06"] }
+wgpu = "22"
+pollster = { workspace = true }
+env_logger = { workspace = true }
+glam = { workspace = true }
+smol_str = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[lints.rust]
+unexpected_cfgs = { level = "allow" }
