@@ -28,5 +28,5 @@ pub use dispatcher::Dispatcher;
 pub use event::{InputEvent, MouseButton, Modifiers, MouseEvent};
 pub use interactive::{HitTest, Interactive, InteractionId};
 pub use key::KeyCode;
-pub use pick::pick;
+pub use pick::{pick, pick_topmost};
 pub use state::InputState;
