@@ -159,6 +159,7 @@ pub fn walker_tick_system(
 /// found.
 pub fn click_to_walk_system(
     mut pending: ResMut<PendingClick>,
+    frame: Res<FrameContext>,
     graph: Res<SceneGraph>,
     mut q: Query<(&mut Walker, &mut Transform2D), With<Player>>,
 ) {
@@ -171,7 +172,7 @@ pub fn click_to_walk_system(
         return;
     };
 
-    let from = pixel_to_scene(transform.pos, 800.0, 600.0, 0.0);
+    let from = pixel_to_scene(transform.pos, frame.width, frame.height, 0.0);
     let to = adventure_locomotion::ScenePoint::new(target.x as f64, target.y as f64, 0.0);
 
     // Snapshot the visual name before mutable borrow of walker.
