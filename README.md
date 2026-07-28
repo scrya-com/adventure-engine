@@ -1,4 +1,14 @@
-# adventure-engine
+# Ariadne
+
+> **Product name: Ariadne** — *thread through the labyrinth.*  
+> Scrya’s native Rust point-and-click adventure runtime.  
+> Docs: https://scrya.com/ariadne · Name note: [docs/NAME.md](docs/NAME.md)
+
+Repository folder may still read `adventure-engine` until a full rename.
+
+---
+
+# adventure-engine (repo)
 
 A small, native Rust point-and-click adventure game engine.
 
@@ -8,12 +18,13 @@ Inspired by an architectural analysis of Unreal Engine 5.8 — keeping the load-
 
 | Phase | Status | What lands |
 |---|---|---|
-| 0 — Foundation | in progress | repo, design docs, forked locomotion SDK, vendored graph math |
-| 1 — Core + scene data model | pending | RON scene format, gameplay tags, var table |
-| 2 — Rendering | pending | wgpu + Slate-style batcher, 4 shaders |
-| 3 — Input + interaction | pending | click/hover dispatch, hotspot picking |
-| 4 — Locomotion wired up | pending | click-to-walk using forked scene-engine code |
-| 5 — Dialog + UI | pending | RON dialog trees + Rhai conditions |
+| 0 — Foundation | **done** | repo, design docs, forked locomotion SDK, vendored graph math |
+| 1 — Core + scene data model | **done** | RON scene format, gameplay tags, var table |
+| 2 — Rendering | **done** | wgpu + Slate-style batcher (`examples/01`, `02`) |
+| 3 — Input + interaction | **done** | click/hover dispatch, hotspot picking (`examples/03`) |
+| 4 — Locomotion wired up | **done** | click-to-walk (`examples/04` + `engine`) |
+| 5 — Dialog + UI | **done** | RON dialog trees + Rhai conditions (`examples/05-dialog`) |
+| content pack | assets | Shawshank PAC stills (`examples/06-shawshank-pac`) — playable HTML in sibling [ncp](https://github.com/johndpope/ncp) repo until Phase 7 verbs |
 | 6 — Audio + save | pending | kira 4-bus mixer, versioned save files |
 | 7 — Inventory + verbs | pending | verb coin UI, item combining |
 | 8 — Cutscenes + i18n | pending | timeline/sequencer, fluent-rs |
@@ -51,7 +62,10 @@ The design borrows patterns (not code) from Unreal Engine 5.8 — see `docs/DECI
 ```bash
 cargo build --workspace
 cargo test --workspace
-cargo run --example 02-sprite   # phase 2
+cargo run -p example-02-sprite   # phase 2
+cargo run -p example-05-dialog   # phase 5 — branching dialog + Rhai
+# Shawshank PAC content pack (HTML playable demo lives in ncp repo):
+#   examples/06-shawshank-pac/README.md
 ```
 
 ## License
