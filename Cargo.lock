@@ -86,24 +86,16 @@ dependencies = [
 name = "adventure-engine"
 version = "0.1.0"
 dependencies = [
- "adventure-assets",
- "adventure-audio",
  "adventure-core",
- "adventure-cutscene",
- "adventure-dialogue",
- "adventure-graph",
  "adventure-input",
- "adventure-inventory",
- "adventure-localization",
  "adventure-locomotion",
  "adventure-render2d",
- "adventure-save",
  "adventure-scene",
- "adventure-scripting",
  "adventure-state",
- "adventure-ui",
  "bevy_ecs",
- "bevy_tasks",
+ "glam",
+ "smallvec",
+ "smol_str",
  "thiserror 1.0.69",
  "tracing",
 ]
@@ -1195,6 +1187,26 @@ dependencies = [
  "adventure-render2d",
  "adventure-scene",
  "env_logger",
+ "glam",
+ "pollster",
+ "smol_str",
+ "tracing",
+ "tracing-subscriber",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
+name = "example-04-walking"
+version = "0.1.0"
+dependencies = [
+ "adventure-core",
+ "adventure-engine",
+ "adventure-input",
+ "adventure-locomotion",
+ "adventure-render2d",
+ "adventure-scene",
+ "bevy_ecs",
  "glam",
  "pollster",
  "smol_str",

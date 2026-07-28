@@ -1,0 +1,27 @@
+[package]
+name = "example-04-walking"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Phase 4 example — click-to-walk using locomotion + bevy_ecs"
+publish.workspace = true
+
+[dependencies]
+adventure-engine = { path = "../../crates/engine" }
+adventure-input = { path = "../../crates/input" }
+adventure-scene = { path = "../../crates/scene" }
+adventure-core = { path = "../../crates/core" }
+adventure-render2d = { path = "../../crates/render2d" }
+adventure-locomotion = { path = "../../crates/locomotion" }
+bevy_ecs = { workspace = true }
+winit = { workspace = true, features = ["rwh_06"] }
+wgpu = "22"
+pollster = { workspace = true }
+glam = { workspace = true }
+smol_str = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[lints.rust]
+unexpected_cfgs = { level = "allow" }

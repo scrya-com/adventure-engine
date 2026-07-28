@@ -70,13 +70,14 @@ impl Rect {
 /// Cardinal + intercardinal facing.
 ///
 /// Matches the 8-direction walk ring in `crates/locomotion/src/compass.rs`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum Facing {
     /// North (away from camera).
     North,
     /// North-east.
     NorthEast,
-    /// East (right).
+    /// East (right) — the default facing.
+    #[default]
     East,
     /// South-east.
     SouthEast,
