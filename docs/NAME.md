@@ -29,4 +29,13 @@ and docs use **Ariadne** only.
 
 - Product docs: https://scrya.com/ariadne  
 - Web demo: https://beta.scrya.com/scene/?play=1&room=shawshank  
-- Source: this repository  
+- Source: https://github.com/scrya-com/adventure-engine  
+
+```bash
+git clone git@github.com:scrya-com/adventure-engine.git
+cd adventure-engine
+cargo build --workspace
+cargo test --workspace
+cargo run -p example-05-dialog
+```
+

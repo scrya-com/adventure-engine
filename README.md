@@ -2,9 +2,20 @@
 
 > **Product name: Ariadne** — *thread through the labyrinth.*  
 > Scrya’s native Rust point-and-click adventure runtime.  
-> Docs: https://scrya.com/ariadne · Name note: [docs/NAME.md](docs/NAME.md)
+> Docs: https://scrya.com/ariadne · Name note: [docs/NAME.md](docs/NAME.md)  
+> **Source:** [github.com/scrya-com/adventure-engine](https://github.com/scrya-com/adventure-engine)
 
-Repository folder may still read `adventure-engine` until a full rename.
+Repository directory name remains `adventure-engine` (crate paths) until a full rename.
+
+## Clone & build
+
+```bash
+git clone git@github.com:scrya-com/adventure-engine.git
+cd adventure-engine
+cargo build --workspace
+cargo test --workspace
+cargo run -p example-05-dialog
+```
 
 ---
 
