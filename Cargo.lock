@@ -1268,6 +1268,7 @@ dependencies = [
  "adventure-state",
  "adventure-ui",
  "glam",
+ "image",
  "pollster",
  "smol_str",
  "tracing",

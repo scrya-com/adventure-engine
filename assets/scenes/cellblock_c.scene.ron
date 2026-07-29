@@ -1,3 +1,11 @@
+// Shawshank Cell Block C — dual examine/talk hotspots on Andy's cell.
+// Host gates (adventure example-08 FlagHost::hotspot_active), aligned with
+// ncp/demos/shawshank-pac HTML smoke:
+//   hs_red_cell          always
+//   hs_andy_cell         always (empty vs occupied handled in action)
+//   hs_andy_cell_talk    only when CanTalkAndy (after Look on occupied cell)
+//   hs_contraband_spot   only when KnowsRedBusiness (after first-meeting dialog)
+// Spine: ExaminedCell → AndyArrived (N) → Noticed/CanTalk → Met/KnowsRed → stone
 (
     name: "shawshank_cellblock",
     entry_room: "cellblock_c",
@@ -26,6 +34,7 @@
                     ),
                 ),
                 (
+                    // Examine half of dual Andy hotspot (NCP: single hs_andy_cell + examine verb).
                     id: "hs_andy_cell",
                     kind: Examine,
                     polygon: [
@@ -41,6 +50,7 @@
                     ),
                 ),
                 (
+                    // Talk half — host-hidden until CanTalkAndy (after Look on occupied).
                     id: "hs_andy_cell_talk",
                     kind: Talk,
                     polygon: [
@@ -56,6 +66,7 @@
                     ),
                 ),
                 (
+                    // Contraband — host-hidden until KnowsRedBusiness (post dialog).
                     id: "hs_contraband_spot",
                     kind: Use,
                     polygon: [
