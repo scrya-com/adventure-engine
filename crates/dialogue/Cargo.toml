@@ -13,3 +13,4 @@ adventure-scripting.workspace = true
 serde.workspace = true
 ron.workspace = true
 smol_str.workspace = true
+thiserror.workspace = true

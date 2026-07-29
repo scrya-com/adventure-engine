@@ -73,37 +73,57 @@ This is the integration test for the forked locomotion crate.
 
 **Exit:** character walks to clicked point. SE→NW moonwalk regression test still passes.
 
-## Phase 5 — Dialog + UI
+## Phase 5 — Dialog + UI ✅
 
 `dialogue` crate:
-- `DialogTree` (RON)
-- `DialogRunner` state machine
-- Rhai-evaluated conditions / side effects
+- `DialogTree` (RON) — `entry` + `nodes` map
+- `DialogRunner` state machine (`start` / `advance` / `choose`)
+- Choice + node `condition` (Rhai); `on_enter` / choice `side_effects`
+- Fail-closed choose when condition is false
+
+`scripting` crate:
+- `ScriptHost`: `has_tag` / `has_any_tag` / `add_tag` / `set_int`… + var scope
+- Side-effect scripts can branch on tags and read vars
 
 `ui` crate:
-- Immediate-mode API for menus/dialog
-- Retained HUD layer (verb coin, inventory pop-out)
+- Immediate-mode dialog box (panel + choice hit boxes)
+- Text glyphs deferred (speaker/line logged + returned as strings)
 
-**Example:** `05-dialog`.
+**Example:** `examples/05-dialog` (workspace member).  
+**Fixture:** `assets/dialogs/bob_intro.dialog.ron`.
 
-**Exit:** branching dialog with Rhai conditions.
+**Exit:** branching dialog with Rhai conditions — **met**.
 
-## Phase 6 — Audio + save
+## Phase 6 — Audio + save ✅
 
-`audio` crate (kira backend) — 4 buses, crossfade, VO queue.
-`save` crate — versioned header + custom versions + migrations.
+`audio` crate:
+- 4 buses (Master/Music/Sfx/Voice), crossfade, VO + subtitle events
+- [`NullMixer`] (headless / CI) + [`KiraMixer`] (kira; `device` feature for cpal)
+- Synthetic PCM helper for demos without asset files
 
-**Example:** `06-audio-save`.
+`save` crate:
+- Versioned header (`SAVG` magic + schema + custom versions)
+- MessagePack body + SHA-1 footer, optional PNG thumb, `.meta.json` sidecar
+- Migration hook (JSON intermediate) for future custom-version bumps
 
-**Exit:** music crossfade on room change; save + restart restores state.
+**Example:** `examples/06-audio-save` (workspace member).
 
-## Phase 7 — Inventory + verbs
+**Exit:** music crossfade on room change; save + restart restores state — **met**.
+
+## Phase 7 — Inventory + verbs ✅
 
 `inventory` crate:
-- `Item`, `Inventory`, combine rules
-- Verb coin UI (Look/Use/Talk/Pickup)
+- `Item` + `ItemVerb` (RON) — id, display name, description, tags, verbs
+- `Inventory` bag — add/remove/has/count, optional capacity, stackable slots
+- `CombineTable` — use item A on B → result / message; **fail closed**
+- `ItemCatalog` — definition lookup for combine grants
+- `VerbKind` — Look / Use / Talk / Pickup / Give / UseOn
+- `VerbCoin` + `InventoryBar` — radial / bar hit-test helpers (immediate-mode UI data)
 
-**Example:** `07-inventory`.
+**Example:** `examples/07-inventory` (workspace member, headless).  
+**Fixtures:** `assets/items/*.item.ron`, `assets/items/combine_table.ron`.
+
+**Exit:** pick up, look, combine oil+lamp, fail-closed unknown pair, verb coin hit-test — **met**.
 
 ## Phase 8 — Cutscenes + localization + vertical slice
 

@@ -22,6 +22,9 @@ members = [
     "examples/02-sprite",
     "examples/03-hotspot",
     "examples/04-walking",
+    "examples/05-dialog",
+    "examples/06-audio-save",
+    "examples/07-inventory",
 ]
 
 [workspace.package]

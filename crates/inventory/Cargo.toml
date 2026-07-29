@@ -4,11 +4,11 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "Items, inventory grid, combine rules"
+description = "Items, inventory bag, combine rules, verb coin"
 
 [dependencies]
 adventure-core.workspace = true
-adventure-scripting.workspace = true
 serde.workspace = true
 ron.workspace = true
 smol_str.workspace = true
+thiserror.workspace = true

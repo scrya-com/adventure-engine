@@ -1,0 +1,14 @@
+// Phase 7 fixture — lamp oil.
+Item((
+    id: "oil",
+    display_name: "Lamp Oil",
+    description: "A stoppered flask of lamp oil.",
+    icon: Some("icons/oil"),
+    tags: ["Item.Consumable"],
+    verbs: [
+        ( kind: Look, text: Some("Examine"), action: Some("examine_oil") ),
+        ( kind: Use,  text: Some("Use on"),  requires_target: true ),
+    ],
+    can_combine: true,
+    can_pickup: true,
+))

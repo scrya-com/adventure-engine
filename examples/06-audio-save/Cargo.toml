@@ -1,0 +1,17 @@
+[package]
+name = "example-06-audio-save"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish = false
+description = "Phase 6 — music crossfade + versioned save/load"
+
+[[bin]]
+name = "example-06-audio-save"
+path = "src/main.rs"
+
+[dependencies]
+adventure-core.workspace = true
+adventure-audio = { path = "../../crates/audio" }
+adventure-save = { path = "../../crates/save" }

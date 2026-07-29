@@ -1,0 +1,15 @@
+// Phase 7 fixture — inventory combine recipes.
+(
+    rules: [
+        (
+            a: "oil",
+            b: "lamp",
+            result: Some("lit_lamp"),
+            consume_a: true,
+            consume_b: true,
+            message: "You fill the lamp with oil and light it.",
+            action: Some("light_lamp"),
+        ),
+    ],
+    fail_message: Some("That doesn't work."),
+)

@@ -9,5 +9,7 @@ description = "Immediate-mode menus/dialog + retained HUD"
 [dependencies]
 adventure-core.workspace = true
 adventure-render2d.workspace = true
-adventure-input.workspace = true
-adventure-assets.workspace = true
+adventure-dialogue.workspace = true
+adventure-state.workspace = true
+adventure-scripting.workspace = true
+glam.workspace = true

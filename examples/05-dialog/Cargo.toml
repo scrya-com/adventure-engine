@@ -1,0 +1,25 @@
+[package]
+name = "example-05-dialog"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Phase 5 example — branching dialog with Rhai conditions + side effects"
+publish.workspace = true
+
+[dependencies]
+adventure-core = { path = "../../crates/core" }
+adventure-state = { path = "../../crates/state" }
+adventure-scripting = { path = "../../crates/scripting" }
+adventure-dialogue = { path = "../../crates/dialogue" }
+adventure-ui = { path = "../../crates/ui" }
+adventure-render2d = { path = "../../crates/render2d" }
+winit = { workspace = true, features = ["rwh_06"] }
+wgpu = "22"
+pollster = { workspace = true }
+glam = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[lints.rust]
+unexpected_cfgs = { level = "allow" }

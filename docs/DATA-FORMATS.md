@@ -89,43 +89,62 @@ This maps directly to `crates/locomotion/src/walk_graph.rs::WalkGraph`.
 
 ### Dialog tree — `assets/dialogs/<name>.dialog.ron`
 
+Shipped schema matches `adventure-dialogue` types. Fields:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | string | Tree id |
+| `entry` | string | Node id to enter on start |
+| `nodes` | map id → node | Each node repeats its `id` |
+| node `speaker` / `text` | string | Display |
+| node `next` | `Option` string | Linear hop |
+| node `choices` | list | Branching (takes priority over `next`) |
+| node `on_enter` | `Option` string | Rhai **statements** on land |
+| node `condition` | `Option` string | Rhai **bool**; if false, skip to `next` |
+| choice `text` / `next` | string / `Option` | |
+| choice `condition` | `Option` string | Rhai bool; hide + reject choose if false |
+| choice `side_effects` | `Option` string | Rhai statements on pick |
+
 ```ron
-DialogTree((
-    root: "intro",
+// assets/dialogs/bob_intro.dialog.ron (see repo fixture)
+(
+    id: "bob_intro",
+    entry: "intro",
     nodes: {
-        "intro": DialogNode((
-            speaker: "bob",
-            portrait: Some("portraits/bob_happy"),
-            text: "Hello there, stranger.",
+        "intro": (
+            id: "intro",
+            speaker: "Bob",
+            text: "Oh — hello there.",
+            next: Some("ask"),
+        ),
+        "ask": (
+            id: "ask",
+            speaker: "Bob",
+            text: "What can I do for you?",
             choices: [
-                Choice((
-                    text: "Who are you?",
-                    next: "intro_name",
-                    when: "has_tag(\"State.Player.KnowsBob\") == false",
-                )),
-                Choice((
-                    text: "Goodbye.",
-                    next: "exit",
-                )),
+                (
+                    text: "Tell me a secret",
+                    next: Some("secret"),
+                    condition: Some("has_tag(\"State.NPC.Bob.Met\")"),
+                ),
+                (
+                    text: "Say hello back",
+                    next: Some("ask"),
+                    side_effects: Some("add_tag(\"State.NPC.Bob.Met\"); set_int(\"hellos\", 1)"),
+                ),
+                (
+                    text: "Goodbye",
+                ),
             ],
-            on_enter: [
-                "set_var(\"met_bob\", true)",
-                "give_tag(\"State.NPC.Bob.Met\")",
-            ],
-        )),
-        "intro_name": DialogNode((
-            speaker: "bob",
-            text: "Name's Bob. I work the mill.",
-            next: "intro",
-            on_enter: ["give_tag(\"State.Player.KnowsBob\")"],
-        )),
-        "exit": DialogNode((
-            speaker: "bob",
-            text: "Take care.",
-            terminal: true,
-        )),
+        ),
+        "secret": (
+            id: "secret",
+            speaker: "Bob",
+            text: "The secret is: 42.",
+            next: Some("ask"),
+        ),
     },
-))
+)
 ```
 
 See `docs/SCRIPTING.md` for the Rhai integration.

@@ -34,98 +34,47 @@ Unreal's scripting story is the Blueprint VM:
 - Mature, used in production by multiple game engines.
 - Syntax close to JS / Lua — easy for designers.
 
-## What Rhai evaluates
+## What Rhai evaluates (Phase 5 — shipped)
 
 ```rhai
-// Conditions (boolean expression, evaluated to true/false)
+// Conditions (boolean expression → bool)
 score > 5 && has_tag("State.NPC.Bob.Met")
 
-// Side effects (statement list, executed for effect)
-set_var("met_bob", true);
-give_item("key_cellar");
-play_sound("sfx/door_unlock");
+// Side effects (statement list; mutates tags/vars)
+add_tag("State.NPC.Bob.Met");
+set_int("hellos", hellos + 1);   // vars are in scope for reads
+set_str("last", "Bob");
 ```
 
-Rust bindings exposed to Rhai:
+### Bindings in `ScriptHost` (`crates/scripting/src/host.rs`)
 
-```rust
-// In crates/scripting/src/bindings.rs
-engine.register_fn("has_tag", |state: &mut ScriptState, tag: &str| -> bool {
-    state.tags.has(Tag::from(tag))
-});
+| Function | Kind | Notes |
+| --- | --- | --- |
+| `has_tag(s)` | read | exact tag |
+| `has_any_tag(s)` | read | hierarchical parent match |
+| `add_tag(s)` / `remove_tag(s)` | write | invalid tags no-op |
+| `set_int` / `set_float` / `set_bool` / `set_str` | write | typed `VarTable` |
 
-engine.register_fn("set_var", |state: &mut ScriptState, key: &str, val: Dynamic| {
-    state.vars.set(key, val);
-});
+Conditions **and** side-effect scripts both get tag reads + var scope.  
+Op limits: 10k operations / depth 32.
 
-engine.register_fn("give_item", |state: &mut ScriptState, item: &str| {
-    state.queue.push(Action::GiveItem(AssetId::from(item)));
-});
-
-engine.register_fn("play_sound", |state: &mut ScriptState, sound: &str| {
-    state.queue.push(Action::PlaySound(AssetId::from(sound)));
-});
-```
-
-The script doesn't execute the action directly — it pushes `Action` records into a queue. The engine's main loop drains the queue and dispatches. This keeps Rhai sandboxed and lets us serialize / replay for testing.
+**Planned (later phases):** Action queue (`give_item`, `play_sound`), AST cache, inventory predicates.
 
 ## Data-driven RON format
 
-```ron
-// assets/scenes/clearing.dialog.ron
-DialogTree((
-    root: "intro",
-    nodes: {
-        "intro": DialogNode((
-            speaker: "bob",
-            text: "Hello there, stranger.",
-            choices: [
-                Choice((
-                    text: "Who are you?",
-                    next: "intro_name",
-                    // Rhai expression — only show this choice if condition is true
-                    when: "has_tag(\"State.Player.KnowsBob\") == false",
-                )),
-                Choice((
-                    text: "Goodbye.",
-                    next: "exit",
-                )),
-            ],
-            // Rhai statements — run when this node is entered
-            on_enter: [
-                "set_var(\"met_bob\", true)",
-                "give_tag(\"State.NPC.Bob.Met\")",
-            ],
-        )),
-        "intro_name": DialogNode((
-            speaker: "bob",
-            text: "Name's Bob. I work the mill.",
-            next: "intro",
-            on_enter: ["give_tag(\"State.Player.KnowsBob\")"],
-        )),
-        "exit": DialogNode((
-            speaker: "bob",
-            text: "Take care.",
-            // Terminal node — closes the dialog
-        )),
-    },
-))
-```
+Shipped field names: `entry` (not `root`), `condition` (not `when`), single `on_enter` string (not a list), `add_tag` / `set_int` (not `give_tag` / `set_var`).
 
-See `docs/DATA-FORMATS.md` for the full schema.
+Fixture: `assets/dialogs/bob_intro.dialog.ron`. Full schema: `docs/DATA-FORMATS.md`.
 
 ## Crate layout
 
 ```
 crates/scripting/
 ├── Cargo.toml
-├── src/
-│   ├── lib.rs           # public API: ScriptEngine, ScriptState
-│   ├── engine.rs        # Rhai engine wrapper
-│   ├── state.rs         # ScriptState: tags + vars + action queue
-│   ├── bindings.rs      # register_fn calls
-│   └── compile.rs       # AST caching: compile once, eval many
-└── tests/
+└── src/
+    ├── lib.rs
+    ├── error.rs
+    └── host.rs      # ScriptHost: eval_condition + run
 ```
 
 ## API surface

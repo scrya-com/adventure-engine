@@ -1,0 +1,14 @@
+// Phase 7 fixture — empty oil lamp.
+Item((
+    id: "lamp",
+    display_name: "Oil Lamp",
+    description: "An empty brass oil lamp.",
+    icon: Some("icons/lamp"),
+    tags: ["Item.Tool"],
+    verbs: [
+        ( kind: Look, text: Some("Examine"), action: Some("examine_lamp") ),
+        ( kind: Use,  text: Some("Use on"),  requires_target: true ),
+    ],
+    can_combine: true,
+    can_pickup: true,
+))

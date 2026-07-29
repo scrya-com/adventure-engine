@@ -8,6 +8,12 @@ description = "kira-based 4-bus audio engine: Master/Music/Sfx/Voice"
 
 [dependencies]
 adventure-core.workspace = true
-kira = "0.9"
+# default-features off: no cpal/ALSA required for CI. Enable `device` for real output.
+kira = { version = "0.9", default-features = false, features = ["mp3", "ogg", "flac", "wav"] }
 thiserror.workspace = true
 crossbeam-channel = "0.5"
+
+[features]
+default = []
+# Real audio device via kira's cpal backend (needs system ALSA/etc.).
+device = ["kira/cpal"]

@@ -1,0 +1,16 @@
+[package]
+name = "example-07-inventory"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish = false
+description = "Phase 7 — pick up, look, combine, verb coin (headless)"
+
+[[bin]]
+name = "example-07-inventory"
+path = "src/main.rs"
+
+[dependencies]
+adventure-core.workspace = true
+adventure-inventory = { path = "../../crates/inventory" }

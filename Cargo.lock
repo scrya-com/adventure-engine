@@ -80,6 +80,7 @@ dependencies = [
  "ron",
  "serde",
  "smol_str",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -121,10 +122,10 @@ name = "adventure-inventory"
 version = "0.1.0"
 dependencies = [
  "adventure-core",
- "adventure-scripting",
  "ron",
  "serde",
  "smol_str",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -173,6 +174,7 @@ dependencies = [
  "adventure-core",
  "rmp-serde",
  "serde",
+ "serde_json",
  "sha1",
  "smallvec",
  "smol_str",
@@ -215,10 +217,12 @@ dependencies = [
 name = "adventure-ui"
 version = "0.1.0"
 dependencies = [
- "adventure-assets",
  "adventure-core",
- "adventure-input",
+ "adventure-dialogue",
  "adventure-render2d",
+ "adventure-scripting",
+ "adventure-state",
+ "glam",
 ]
 
 [[package]]
@@ -1214,6 +1218,41 @@ dependencies = [
  "tracing-subscriber",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "example-05-dialog"
+version = "0.1.0"
+dependencies = [
+ "adventure-core",
+ "adventure-dialogue",
+ "adventure-render2d",
+ "adventure-scripting",
+ "adventure-state",
+ "adventure-ui",
+ "glam",
+ "pollster",
+ "tracing",
+ "tracing-subscriber",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
+name = "example-06-audio-save"
+version = "0.1.0"
+dependencies = [
+ "adventure-audio",
+ "adventure-core",
+ "adventure-save",
+]
+
+[[package]]
+name = "example-07-inventory"
+version = "0.1.0"
+dependencies = [
+ "adventure-core",
+ "adventure-inventory",
 ]
 
 [[package]]

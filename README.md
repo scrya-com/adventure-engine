@@ -35,9 +35,9 @@ Inspired by an architectural analysis of Unreal Engine 5.8 — keeping the load-
 | 3 — Input + interaction | **done** | click/hover dispatch, hotspot picking (`examples/03`) |
 | 4 — Locomotion wired up | **done** | click-to-walk (`examples/04` + `engine`) |
 | 5 — Dialog + UI | **done** | RON dialog trees + Rhai conditions (`examples/05-dialog`) |
-| content pack | assets | Shawshank PAC stills (`examples/06-shawshank-pac`) — playable HTML in sibling [ncp](https://github.com/johndpope/ncp) repo until Phase 7 verbs |
-| 6 — Audio + save | pending | kira 4-bus mixer, versioned save files |
-| 7 — Inventory + verbs | pending | verb coin UI, item combining |
+| content pack | assets | Shawshank PAC stills (`examples/06-shawshank-pac`) — playable HTML in sibling [ncp](https://github.com/johndpope/ncp) repo |
+| 6 — Audio + save | **done** | kira 4-bus mixer, versioned save files (`examples/06-audio-save`) |
+| 7 — Inventory + verbs | **done** | items + combine + verb coin (`examples/07-inventory`) |
 | 8 — Cutscenes + i18n | pending | timeline/sequencer, fluent-rs |
 | 9 — Editor tooling | pending | asset packer, RON inspector |
 
@@ -75,6 +75,8 @@ cargo build --workspace
 cargo test --workspace
 cargo run -p example-02-sprite   # phase 2
 cargo run -p example-05-dialog   # phase 5 — branching dialog + Rhai
+cargo run -p example-06-audio-save  # phase 6 — music crossfade + save/load
+cargo run -p example-07-inventory   # phase 7 — pick up / look / combine / verb coin
 # Shawshank PAC content pack (HTML playable demo lives in ncp repo):
 #   examples/06-shawshank-pac/README.md
 ```

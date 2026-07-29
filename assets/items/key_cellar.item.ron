@@ -1,0 +1,15 @@
+// Phase 7 fixture — cellar key (DATA-FORMATS shape).
+Item((
+    id: "key_cellar",
+    display_name: "Cellar Key",
+    description: "A heavy iron key, cold to the touch.",
+    icon: Some("icons/key_cellar"),
+    tags: ["Item.Key"],
+    verbs: [
+        ( kind: Look,  text: Some("Examine"), action: Some("examine_key_cellar") ),
+        ( kind: Use,   text: Some("Use on"),  requires_target: true ),
+        ( kind: UseOn, matches: Some("lock_cellar"), action: Some("unlock_cellar") ),
+    ],
+    can_combine: true,
+    can_pickup: true,
+))
