@@ -1,0 +1,99 @@
+// Shawshank Cell Block C — dual examine/talk hotspots on Andy's cell.
+// Host gates (adventure example-08 FlagHost::hotspot_active), aligned with
+// ncp/demos/shawshank-pac HTML smoke:
+//   hs_red_cell          always
+//   hs_andy_cell         always (empty vs occupied handled in action)
+//   hs_andy_cell_talk    only when CanTalkAndy (after Look on occupied cell)
+//   hs_contraband_spot   only when KnowsRedBusiness (after first-meeting dialog)
+// Spine: ExaminedCell → AndyArrived (N) → Noticed/CanTalk → Met/KnowsRed → stone
+(
+    name: "shawshank_cellblock",
+    entry_room: "cellblock_c",
+    rooms: {
+        "cellblock_c": (
+            id: "cellblock_c",
+            background: 15242913048759617436,
+            walk_graph: (
+                nodes: [],
+                edges: [],
+            ),
+            hotspots: [
+                (
+                    id: "hs_red_cell",
+                    kind: Examine,
+                    polygon: [
+                        (0.15625, 0.18518518),
+                        (0.234375, 0.18518518),
+                        (0.234375, 0.5555556),
+                        (0.15625, 0.5555556),
+                    ],
+                    cursor: Named("look"),
+                    on_click: (
+                        kind: Action,
+                        id: "examine_red_cell",
+                    ),
+                ),
+                (
+                    // Examine half of dual Andy hotspot (NCP: single hs_andy_cell + examine verb).
+                    id: "hs_andy_cell",
+                    kind: Examine,
+                    polygon: [
+                        (0.234375, 0.18518518),
+                        (0.3125, 0.18518518),
+                        (0.3125, 0.5555556),
+                        (0.234375, 0.5555556),
+                    ],
+                    cursor: Named("look"),
+                    on_click: (
+                        kind: Action,
+                        id: "examine_andy_cell",
+                    ),
+                ),
+                (
+                    // Talk half — host-hidden until CanTalkAndy (after Look on occupied).
+                    id: "hs_andy_cell_talk",
+                    kind: Talk,
+                    polygon: [
+                        (0.234375, 0.18518518),
+                        (0.3125, 0.18518518),
+                        (0.3125, 0.5555556),
+                        (0.234375, 0.5555556),
+                    ],
+                    cursor: Named("talk"),
+                    on_click: (
+                        kind: Action,
+                        id: "talk_andy",
+                    ),
+                ),
+                (
+                    // Contraband — host-hidden until KnowsRedBusiness (post dialog).
+                    id: "hs_contraband_spot",
+                    kind: Use,
+                    polygon: [
+                        (0.125, 0.4814815),
+                        (0.1484375, 0.4814815),
+                        (0.1484375, 0.537037),
+                        (0.125, 0.537037),
+                    ],
+                    cursor: Named("use"),
+                    on_click: (
+                        kind: Action,
+                        id: "use_loose_stone",
+                    ),
+                ),
+            ],
+            props: [],
+            spawns: {
+                "entry": (
+                    id: "entry",
+                    point: (0.2, 0.85),
+                    facing: East,
+                    depth: 0.0,
+                ),
+            },
+            ambient_music: None,
+            ambient_sfx: None,
+        ),
+    },
+    transitions: {},
+)

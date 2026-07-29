@@ -25,6 +25,7 @@ members = [
     "examples/05-dialog",
     "examples/06-audio-save",
     "examples/07-inventory",
+    "examples/08-shawshank-pac",
 ]
 
 [workspace.package]

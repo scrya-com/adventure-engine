@@ -1256,6 +1256,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-08-shawshank-pac"
+version = "0.1.0"
+dependencies = [
+ "adventure-core",
+ "adventure-dialogue",
+ "adventure-input",
+ "adventure-render2d",
+ "adventure-scene",
+ "adventure-scripting",
+ "adventure-state",
+ "adventure-ui",
+ "glam",
+ "image",
+ "pollster",
+ "smol_str",
+ "tracing",
+ "tracing-subscriber",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
 name = "extended"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -27,9 +27,14 @@ python3 -m http.server 8765
 
 Portraits are **fictional** inmate designs for demo/dev — not celebrity likeness.
 
-## Future Rust example
+## Playable binary
 
-When Phase 7 verbs land, wire these assets + the dialogue tree from
-`ncp/examples/vncp-shawshank-multiformat.json` (`point_and_click` →
-`dialogue_andy_first_meeting`) into a `cargo run -p example-06-shawshank-pac`
-binary that uses `adventure-dialogue` + hotspot picking (examples 03 + 05).
+**Use `examples/08-shawshank-pac`** (workspace member) — not this folder:
+
+```bash
+cargo run -p example-08-shawshank-pac -- --headless
+cargo test -p example-08-shawshank-pac
+```
+
+This `06-shawshank-pac` directory remains a **content pack** (stills only).
+The `06` number is shared with `06-audio-save`; the Shawshank host is **08**.
