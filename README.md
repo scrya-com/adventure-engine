@@ -1,11 +1,37 @@
 # Ariadne
 
+<p align="center">
+  <img src="docs/assets/readme/wordmark.svg" alt="Ariadne — thread through the labyrinth" width="480"/>
+</p>
+
+<p align="center">
+  <img src="docs/assets/readme/hero-banner.jpg" alt="Ariadne hero — golden thread through a charcoal labyrinth" width="100%"/>
+</p>
+
 > **Product name: Ariadne** — *thread through the labyrinth.*  
 > Scrya’s native Rust point-and-click adventure runtime.  
 > Docs: https://scrya.com/ariadne · Name note: [docs/NAME.md](docs/NAME.md)  
 > **Source:** [github.com/scrya-com/adventure-engine](https://github.com/scrya-com/adventure-engine)
 
+<p align="center">
+  <a href="https://beta.scrya.com/scene/?play=1&room=shawshank"><img src="docs/assets/readme/logo-mark.png" alt="Ariadne logo mark" width="96"/></a>
+</p>
+
 Repository directory name remains `adventure-engine` (crate paths) until a full rename.
+
+## Snapshot
+
+| | |
+|---|---|
+| **Runtime** | Rust workspace · wgpu · bevy_ecs (world only) · Rhai · RON |
+| **Phases** | 0–7 done · 8–9 next |
+| **Sister** | Flutter Scene at [beta.scrya.com/scene](https://beta.scrya.com/scene/?play=1&room=shawshank) |
+
+<p align="center">
+  <img src="docs/assets/readme/features-strip.jpg" alt="Walk path · dialog tree · verb coin" width="100%"/>
+</p>
+
+<p align="center"><sub>Walk graphs · dialog trees · verb coin — the thread that weaves playable systems.</sub></p>
 
 ## Clone & build
 
@@ -47,6 +73,10 @@ See `docs/ROADMAP.md` for the full plan.
 
 16-crate workspace under `crates/`. See `docs/ARCHITECTURE.md` for the dependency graph.
 
+<p align="center">
+  <img src="docs/assets/readme/architecture.svg" alt="Ariadne crate architecture diagram" width="100%"/>
+</p>
+
 **Foundation crates:**
 - `core` — glam re-exports, AssetId, Error, tracing
 - `locomotion` — forked from scene-engine (walk graphs, plant FSM, retargeting)
@@ -81,6 +111,21 @@ cargo run -p example-07-inventory   # phase 7 — pick up / look / combine / ver
 #   examples/06-shawshank-pac/README.md
 ```
 
-## License
+## Brand mood
 
-MIT — see [LICENSE](LICENSE).
+<p align="center">
+  <img src="docs/assets/readme/mood-cliff.jpg" alt="Golden thread on Cyclades cliff path" width="90%"/>
+</p>
+
+<p align="center"><sub>Flagship fantasy lean: Santorini light, Aegean teal, gold thread — see <a href="docs/BRAND_AND_GAME.md">docs/BRAND_AND_GAME.md</a>.</sub></p>
+
+## README assets
+
+| File | Use |
+|---|---|
+| [`docs/assets/readme/wordmark.svg`](docs/assets/readme/wordmark.svg) | Title lockup |
+| [`docs/assets/readme/logo-mark.png`](docs/assets/readme/logo-mark.png) | Avatar / favicon source |
+| [`docs/assets/readme/hero-banner.jpg`](docs/assets/readme/hero-banner.jpg) | GitHub social / hero |
+| [`docs/assets/readme/features-strip.jpg`](docs/assets/readme/features-strip.jpg) | Feature teaser |
+| [`docs/assets/readme/architecture.svg`](docs/assets/readme/architecture.svg) | Crate graph |
+| [`docs/assets/readme/mood-cliff.jpg`](docs/assets/readme/mood-cliff.jpg) | Brand mood |
