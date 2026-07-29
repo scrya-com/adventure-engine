@@ -27,6 +27,11 @@ python3 -m http.server 8765
 
 Portraits are **fictional** inmate designs for demo/dev — not celebrity likeness.
 
+## Playable binary
+
+Use **`examples/08-shawshank-pac`**: `cargo test -p example-08-shawshank-pac`.
+This folder is stills-only (content pack). Number **06** collides with `06-audio-save`.
+
 ## Future Rust example
 
 When Phase 7 verbs land, wire these assets + the dialogue tree from

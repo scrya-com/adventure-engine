@@ -1,0 +1,32 @@
+[package]
+name = "example-08-shawshank-pac"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Shawshank Cell Block C MVP — NCP PAC spine on adventure-engine"
+publish.workspace = true
+
+[[bin]]
+name = "example-08-shawshank-pac"
+path = "src/main.rs"
+
+[dependencies]
+adventure-core = { path = "../../crates/core" }
+adventure-state = { path = "../../crates/state" }
+adventure-scripting = { path = "../../crates/scripting" }
+adventure-dialogue = { path = "../../crates/dialogue" }
+adventure-scene = { path = "../../crates/scene" }
+adventure-ui = { path = "../../crates/ui" }
+adventure-render2d = { path = "../../crates/render2d" }
+adventure-input = { path = "../../crates/input" }
+winit = { workspace = true, features = ["rwh_06"] }
+wgpu = "22"
+pollster = { workspace = true }
+glam = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+smol_str = { workspace = true }
+
+[lints.rust]
+unexpected_cfgs = { level = "allow" }
