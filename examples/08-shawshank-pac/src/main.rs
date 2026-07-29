@@ -1,4 +1,4 @@
-//! Shawshank Cell Block C — MVP PAC spine on adventure-engine.
+//! Shawshank Cell Block C — playable chrome + PAC spine on adventure-engine.
 //!
 //! Data:
 //!   * `assets/scenes/cellblock_c.scene.ron`  (from ncp room.json hotspots)
@@ -6,19 +6,25 @@
 //!   * `examples/06-shawshank-pac/assets/` — cellblock_bg + hub portraits
 //!
 //! Host flag machine mirrors `ncp/demos/shawshank-pac/game.js`:
-//!   examine Red → Next day (N) → examine Andy → talk → loose stone
+//!   examine Red → Next day → examine Andy → talk → loose stone
 //!
-//! Windowed host draws cellblock_bg full-bleed and hub portraits at the
-//! same normalized anchors as the HTML demo (`#port-red` / `#port-andy`).
-//! Missing PNGs are skipped (no panic) so CI headless remains green.
+//! Windowed host:
+//!   * full-bleed bg + portraits when flags flip
+//!   * **verb bar** (LOOK / TALK / USE) + **NEXT DAY** button
+//!   * bright hotspots + hover labels + always-on status strip
+//!   * dialog panel with bitmap-text speaker/line
 //!
 //! ```text
 //! cargo test -p example-08-shawshank-pac
 //! cargo run -p example-08-shawshank-pac -- --headless
+//! cargo run -p example-08-shawshank-pac -- --playtest /tmp/score.json
 //! cargo run -p example-08-shawshank-pac   # windowed
 //! ```
 
-use std::path::PathBuf;
+mod bitmap_text;
+mod playtest;
+
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -32,24 +38,50 @@ use adventure_scene::scene::Scene;
 use adventure_scripting::ScriptHost;
 use adventure_state::flag_paths::shawshank as flags;
 use adventure_state::{Tag, Tags, VarTable};
-use adventure_ui::{DialogBox, DialogBoxConfig, UiInput};
+use adventure_ui::layout::Rect;
+use adventure_ui::{DialogBox, DialogBoxConfig, UiContext, UiInput, UI_LAYER};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, KeyEvent, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
 
+use bitmap_text::{draw_text, text_width};
+use playtest::{score_rubric, timed, PlaytestReport, TaskResult};
+
 /// Content-pack stills (shared with the NCP HTML demo / example-06 pack).
 const ASSET_BG: &str = "examples/06-shawshank-pac/assets/cellblock_bg.png";
 const ASSET_PORT_RED: &str = "examples/06-shawshank-pac/assets/portrait_red.png";
 const ASSET_PORT_ANDY: &str = "examples/06-shawshank-pac/assets/portrait_andy.png";
 
+/// Active SCUMM-style verb (click world after selecting).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Verb {
+    Look,
+    Talk,
+    Use,
+}
+
+impl Verb {
+    fn label(self) -> &'static str {
+        match self {
+            Verb::Look => "LOOK",
+            Verb::Talk => "TALK",
+            Verb::Use => "USE",
+        }
+    }
+}
+
+/// Chrome strip heights (px).
+const STATUS_H: f32 = 44.0;
+const VERB_H: f32 = 56.0;
+
 /// HTML demo portrait layout (`style.css`: width 11%, left/top %).
-const PORT_W: f32 = 0.11;
-const PORT_RED_X: f32 = 0.18;
-const PORT_RED_Y: f32 = 0.28;
-const PORT_ANDY_X: f32 = 0.28;
-const PORT_ANDY_Y: f32 = 0.28;
+const PORT_W: f32 = 0.14;
+const PORT_RED_X: f32 = 0.16;
+const PORT_RED_Y: f32 = 0.26;
+const PORT_ANDY_X: f32 = 0.30;
+const PORT_ANDY_Y: f32 = 0.26;
 
 fn try_repo_file(rel: &str) -> Option<PathBuf> {
     let candidates = [
@@ -475,9 +507,12 @@ struct App {
     scene: Scene,
     host: FlagHost,
     dbox: DialogBox,
+    verb: Verb,
     last_frame: Instant,
     cursor_pos: Vec2,
     click_this_frame: Option<Vec2>,
+    /// True when chrome UI consumed the click this frame.
+    chrome_ate_click: bool,
     should_close: bool,
 }
 
@@ -496,10 +531,17 @@ impl App {
             port_andy: None,
             scene: load_scene(),
             host: FlagHost::new(dialog),
-            dbox: DialogBox::new(DialogBoxConfig::default()),
+            dbox: DialogBox::new(DialogBoxConfig {
+                viewport: Vec2::new(1280.0, 720.0),
+                bottom_margin: VERB_H + 12.0,
+                min_height: 160.0,
+                ..DialogBoxConfig::default()
+            }),
+            verb: Verb::Look,
             last_frame: Instant::now(),
             cursor_pos: Vec2::new(400.0, 300.0),
             click_this_frame: None,
+            chrome_ate_click: false,
             should_close: false,
         }
     }
@@ -508,27 +550,59 @@ impl App {
         match key {
             Key::Named(NamedKey::Escape) => self.should_close = true,
             Key::Character(c) if c.as_str() == "1" && !self.host.in_dialog => {
+                self.verb = Verb::Look;
                 self.host.dispatch_action("examine_red_cell");
             }
             Key::Character(c) if c.as_str() == "2" && !self.host.in_dialog => {
+                self.verb = Verb::Look;
                 self.host.dispatch_action("examine_andy_cell");
             }
             Key::Character(c) if c.as_str() == "3" && !self.host.in_dialog => {
+                self.verb = Verb::Talk;
                 self.host.dispatch_action("talk_andy");
             }
             Key::Character(c) if c.as_str() == "4" && !self.host.in_dialog => {
+                self.verb = Verb::Use;
                 self.host.dispatch_action("use_loose_stone");
             }
             Key::Character(c) if c.eq_ignore_ascii_case("n") && !self.host.in_dialog => {
                 self.host.dispatch_action("next_day");
             }
+            Key::Character(c) if c.eq_ignore_ascii_case("l") => self.verb = Verb::Look,
+            Key::Character(c) if c.eq_ignore_ascii_case("t") => self.verb = Verb::Talk,
+            Key::Character(c) if c.eq_ignore_ascii_case("u") => self.verb = Verb::Use,
             _ => {}
         }
-        tracing::info!("{}", self.host.status);
+        tracing::info!("[{}] {}", self.verb.label(), self.host.status);
+    }
+
+    /// Map (verb, hotspot action id) → host action or failure status.
+    fn apply_verb_on_hotspot(&mut self, action_id: &str) {
+        match (self.verb, action_id) {
+            (Verb::Look, "examine_red_cell") => self.host.dispatch_action("examine_red_cell"),
+            (Verb::Look, "examine_andy_cell") | (Verb::Look, "talk_andy") => {
+                // Looking at Andy's cell (talk hotspot shares geometry) uses examine.
+                self.host.dispatch_action("examine_andy_cell");
+            }
+            (Verb::Talk, "talk_andy") | (Verb::Talk, "examine_andy_cell") => {
+                self.host.dispatch_action("talk_andy");
+            }
+            (Verb::Use, "use_loose_stone") => self.host.dispatch_action("use_loose_stone"),
+            (Verb::Use, "examine_red_cell") => {
+                // Use Red's cell → change_room stub message
+                self.host.status = "Red's cell door is locked. Not in this demo slice.".into();
+            }
+            _ => {
+                self.host.status = format!(
+                    "Can't {} that. Try another verb or hotspot.",
+                    self.verb.label().to_ascii_lowercase()
+                );
+            }
+        }
     }
 
     fn click_world(&mut self) {
-        if self.host.in_dialog {
+        if self.host.in_dialog || self.chrome_ate_click {
             return;
         }
         let Some(room) = self.scene.entry() else {
@@ -542,29 +616,177 @@ impl App {
         if w <= 0.0 || h <= 0.0 {
             return;
         }
+        // Clicks on chrome strips are not world.
+        if self.cursor_pos.y < STATUS_H || self.cursor_pos.y > h - VERB_H {
+            return;
+        }
         let p = Vec2::new(self.cursor_pos.x / w, self.cursor_pos.y / h);
+        let mut hit: Option<String> = None;
         for hs in room.hotspots.iter().rev() {
             if !self.host.hotspot_active(hs.id.as_str()) {
                 continue;
             }
             if hs.contains(p) {
                 if let OnClick::Action(a) = &hs.on_click {
-                    self.host.dispatch_action(a.as_str());
-                    tracing::info!("{}", self.host.status);
+                    hit = Some(a.to_string());
                 }
                 break;
             }
         }
+        if let Some(a) = hit {
+            self.apply_verb_on_hotspot(&a);
+            tracing::info!("[{}] {}", self.verb.label(), self.host.status);
+            return;
+        }
+        self.host.status = format!(
+            "{} — nothing here. Hover a glowing zone, or pick a verb below.",
+            self.verb.label()
+        );
+    }
+
+    fn hotspot_label(id: &str) -> &'static str {
+        match id {
+            "hs_red_cell" => "RED'S CELL",
+            "hs_andy_cell" => "ANDY'S CELL",
+            "hs_andy_cell_talk" => "ANDY (TALK)",
+            "hs_contraband_spot" => "LOOSE STONE",
+            _ => "HOTSPOT",
+        }
+    }
+
+    /// Verb bar + NEXT DAY — returns true if a button was clicked.
+    fn draw_chrome(
+        &mut self,
+        ui_elements: &mut Vec<DrawElement>,
+        input: &UiInput,
+        white: TextureId,
+        w: f32,
+        h: f32,
+    ) -> bool {
+        let mut ate = false;
+        let mut ui = UiContext::new(ui_elements, input);
+
+        // Status panel
+        let status_r = Rect::new(Vec2::ZERO, Vec2::new(w, STATUS_H));
+        ui.panel(
+            status_r,
+            Tint::rgba(0.04, 0.05, 0.08, 0.92),
+            Tint::rgba(0.85, 0.75, 0.35, 1.0),
+            2.0,
+            UI_LAYER,
+        );
+
+        // Verb strip
+        let verb_r = Rect::new(Vec2::new(0.0, h - VERB_H), Vec2::new(w, VERB_H));
+        ui.panel(
+            verb_r,
+            Tint::rgba(0.06, 0.07, 0.1, 0.94),
+            Tint::rgba(0.5, 0.55, 0.65, 1.0),
+            2.0,
+            UI_LAYER,
+        );
+
+        let verbs = [Verb::Look, Verb::Talk, Verb::Use];
+        let btn_w = 110.0_f32;
+        let btn_h = 36.0_f32;
+        let gap = 12.0_f32;
+        let mut x = 16.0_f32;
+        let y = h - VERB_H + (VERB_H - btn_h) * 0.5;
+        for v in verbs {
+            let r = Rect::new(Vec2::new(x, y), Vec2::new(btn_w, btn_h));
+            let st = ui.button(r, UI_LAYER + 2);
+            if st.clicked {
+                self.verb = v;
+                ate = true;
+                self.host.status = format!("Verb: {}. Click a glowing hotspot.", v.label());
+            }
+            // Selected = gold fill overlay
+            if self.verb == v {
+                ui.rect(r, Tint::rgba(0.75, 0.55, 0.15, 0.45), UI_LAYER + 3);
+            }
+            x += btn_w + gap;
+        }
+
+        // NEXT DAY — large affordance
+        let next_w = 150.0_f32;
+        let next_r = Rect::new(
+            Vec2::new(w - next_w - 16.0, y),
+            Vec2::new(next_w, btn_h),
+        );
+        let next_st = ui.button(next_r, UI_LAYER + 2);
+        if next_st.clicked && !self.host.in_dialog {
+            self.host.dispatch_action("next_day");
+            ate = true;
+        }
+
+        // Drop ui borrow before text
+        drop(ui);
+
+        // Status text
+        let day = if self.host.andy_arrived() {
+            "DAY 2"
+        } else {
+            "DAY 1"
+        };
+        let line = format!("{}  |  {}", day, self.host.status);
+        let trunc: String = line.chars().take(72).collect();
+        draw_text(
+            ui_elements,
+            white,
+            12.0,
+            12.0,
+            &trunc,
+            2.0,
+            Tint::rgba(0.95, 0.92, 0.8, 1.0),
+            UI_LAYER + 5,
+        );
+
+        // Verb labels (on top of buttons)
+        x = 16.0;
+        for v in verbs {
+            let label = v.label();
+            let tw = text_width(label, 2.0);
+            let lx = x + (btn_w - tw) * 0.5;
+            let ly = y + 10.0;
+            let col = if self.verb == v {
+                Tint::rgba(1.0, 0.95, 0.7, 1.0)
+            } else {
+                Tint::rgba(0.85, 0.88, 0.95, 1.0)
+            };
+            draw_text(ui_elements, white, lx, ly, label, 2.0, col, UI_LAYER + 5);
+            x += btn_w + gap;
+        }
+        draw_text(
+            ui_elements,
+            white,
+            w - next_w - 8.0,
+            y + 10.0,
+            "NEXT DAY",
+            2.0,
+            Tint::rgba(0.7, 0.95, 0.75, 1.0),
+            UI_LAYER + 5,
+        );
+
+        // Hint under verbs
+        draw_text(
+            ui_elements,
+            white,
+            16.0,
+            h - 14.0,
+            "L/T/U SELECT VERB  ·  CLICK GLOW ZONE  ·  N NEXT DAY  ·  ESC QUIT",
+            1.0,
+            Tint::rgba(0.55, 0.58, 0.65, 1.0),
+            UI_LAYER + 5,
+        );
+
+        ate
     }
 
     fn render(&mut self) {
-        let (Some(surface), Some(_adapter), Some(r), Some(window), Some(white)) = (
-            self.surface.as_ref(),
-            self.adapter.as_ref(),
-            self.renderer.as_mut(),
-            self.window.as_ref(),
-            self.white_tex,
-        ) else {
+        let Some(window) = self.window.as_ref() else {
+            return;
+        };
+        let Some(white) = self.white_tex else {
             return;
         };
         let size = window.inner_size();
@@ -572,11 +794,21 @@ impl App {
         if w == 0.0 || h == 0.0 {
             return;
         }
+        // Keep dialog layout in sync with window (no renderer borrow yet).
+        self.dbox = DialogBox::new(DialogBoxConfig {
+            viewport: Vec2::new(w, h),
+            bottom_margin: VERB_H + 12.0,
+            min_height: 160.0,
+            ..DialogBoxConfig::default()
+        });
+
         let view_proj = WgpuRenderer::ortho(w, h);
         let input = UiInput::new(self.cursor_pos, self.click_this_frame);
 
         let mut ui_elements: Vec<DrawElement> = Vec::new();
-        let (advance, pick_src) = if self.host.in_dialog {
+        self.chrome_ate_click = self.draw_chrome(&mut ui_elements, &input, white, w, h);
+
+        let (advance, pick_src, dlg_speaker, dlg_line, dlg_choices) = if self.host.in_dialog {
             let out = self.dbox.draw(
                 &mut ui_elements,
                 &input,
@@ -587,31 +819,78 @@ impl App {
                 &self.host.tags,
             );
             let pick = out.picked_visible_index.and_then(|i| {
-                out.visible_choices
-                    .get(i)
-                    .map(|c| c.source_index)
+                out.visible_choices.get(i).map(|c| c.source_index)
             });
-            (out.advance_requested, pick)
+            let choices: Vec<String> = out
+                .visible_choices
+                .iter()
+                .map(|c| c.text.clone())
+                .collect();
+            (
+                out.advance_requested,
+                pick,
+                out.speaker.clone(),
+                out.line.clone(),
+                choices,
+            )
         } else {
-            (false, None)
+            (false, None, None, None, Vec::new())
         };
+
+        // Dialog text (engine has no font phase yet — bitmap overlay).
+        if let (Some(sp), Some(line)) = (&dlg_speaker, &dlg_line) {
+            let body = DialogBox::new(DialogBoxConfig {
+                viewport: Vec2::new(w, h),
+                bottom_margin: VERB_H + 12.0,
+                min_height: 160.0,
+                ..DialogBoxConfig::default()
+            })
+            .body_rect();
+            draw_text(
+                &mut ui_elements,
+                white,
+                body.left() + 16.0,
+                body.top() + 12.0,
+                &sp.to_ascii_uppercase(),
+                2.0,
+                Tint::rgba(0.95, 0.8, 0.35, 1.0),
+                UI_LAYER + 8,
+            );
+            let line_t: String = line.chars().take(56).collect();
+            draw_text(
+                &mut ui_elements,
+                white,
+                body.left() + 16.0,
+                body.top() + 36.0,
+                &line_t,
+                1.5,
+                Tint::rgba(0.92, 0.92, 0.95, 1.0),
+                UI_LAYER + 8,
+            );
+            // Numbered choice hints
+            for (i, c) in dlg_choices.iter().enumerate() {
+                let t: String = format!("{}. {}", i + 1, c.chars().take(40).collect::<String>());
+                draw_text(
+                    &mut ui_elements,
+                    white,
+                    body.left() + 20.0,
+                    body.bottom() - 28.0 - (dlg_choices.len() - 1 - i) as f32 * 32.0,
+                    &t,
+                    1.5,
+                    Tint::rgba(0.85, 0.9, 1.0, 1.0),
+                    UI_LAYER + 8,
+                );
+            }
+        }
 
         let mut batcher = ElementBatcher::new();
 
-        // Layer 0 — full-bleed cellblock background (HTML `#bg`).
+        // Layer 0 — full-bleed cellblock background
         if let Some(bg) = self.bg_tex {
-            batcher.push(textured_quad(
-                bg,
-                0.0,
-                0.0,
-                w,
-                h,
-                0,
-                Tint::IDENTITY,
-            ));
+            batcher.push(textured_quad(bg, 0.0, 0.0, w, h, 0, Tint::IDENTITY));
         }
 
-        // Layer 1 — hub portraits (same anchors as ncp demos/shawshank-pac/style.css).
+        // Layer 1 — hub portraits (larger, after look / next day)
         let side = PORT_W * w;
         if self.host.examined_cell() {
             if let Some(tex) = self.port_red {
@@ -644,15 +923,11 @@ impl App {
             }
         }
 
-        // Layer 2 — dim hotspot rects (visibility only; clicks use scene hit-test).
+        // Layer 2 — bright hotspots + hover label
+        let hover_norm = Vec2::new(self.cursor_pos.x / w, self.cursor_pos.y / h);
         if let Some(room) = self.scene.entry() {
             for hs in &room.hotspots {
-                if hs.id.as_str() == "hs_andy_cell_talk"
-                    && (!self.host.andy_arrived() || !self.host.can_talk_andy())
-                {
-                    continue;
-                }
-                if hs.id.as_str() == "hs_contraband_spot" && !self.host.knows_red() {
+                if !self.host.hotspot_active(hs.id.as_str()) {
                     continue;
                 }
                 if hs.polygon.len() < 4 {
@@ -662,10 +937,14 @@ impl App {
                 let p1 = hs.polygon[1];
                 let p2 = hs.polygon[2];
                 let p3 = hs.polygon[3];
-                let alpha = match hs.kind {
-                    HotspotKind::Talk => 0.22,
-                    HotspotKind::Use => 0.28,
-                    _ => 0.14,
+                let hovering = hs.contains(hover_norm);
+                let (r, g, b, a) = match (hs.kind, hovering) {
+                    (HotspotKind::Talk, true) => (0.3, 0.95, 0.45, 0.45),
+                    (HotspotKind::Talk, false) => (0.2, 0.75, 0.35, 0.28),
+                    (HotspotKind::Use, true) => (0.95, 0.75, 0.2, 0.5),
+                    (HotspotKind::Use, false) => (0.85, 0.6, 0.15, 0.32),
+                    (_, true) => (0.45, 0.7, 1.0, 0.42),
+                    (_, false) => (0.35, 0.55, 0.9, 0.26),
                 };
                 batcher.push(DrawElement {
                     layer: 2,
@@ -673,7 +952,7 @@ impl App {
                     effect: DrawEffect::NONE,
                     texture: white,
                     uv: UvRect::FULL,
-                    tint: Tint::rgba(0.35, 0.55, 0.85, alpha),
+                    tint: Tint::rgba(r, g, b, a),
                     positions: vec![
                         Vec2::new(p0.x * w, p0.y * h),
                         Vec2::new(p1.x * w, p1.y * h),
@@ -691,10 +970,25 @@ impl App {
                         Vec2::new(0.0, 1.0),
                     ],
                 });
+                if hovering {
+                    let label = Self::hotspot_label(hs.id.as_str());
+                    let lx = p0.x * w;
+                    let ly = (p0.y * h - 18.0).max(STATUS_H + 4.0);
+                    draw_text(
+                        &mut ui_elements,
+                        white,
+                        lx,
+                        ly,
+                        label,
+                        2.0,
+                        Tint::rgba(1.0, 1.0, 0.85, 1.0),
+                        UI_LAYER + 6,
+                    );
+                }
             }
         }
 
-        // Layer 10+ — dialog UI (white texel + tinted rects from adventure-ui).
+        // Chrome + dialog rects (white texel)
         for el in ui_elements {
             let mut el = el;
             el.texture = white;
@@ -710,13 +1004,15 @@ impl App {
                 a: 1.0,
             }
         } else {
-            // Fallback when stills are absent (CI without assets, etc.).
             wgpu::Color {
                 r: 0.07,
                 g: 0.08,
                 b: 0.10,
                 a: 1.0,
             }
+        };
+        let (Some(surface), Some(r)) = (self.surface.as_ref(), self.renderer.as_mut()) else {
+            return;
         };
         let _ = r.render_frame(surface, view_proj, &batches, clear);
 
@@ -739,6 +1035,7 @@ impl App {
         }
         self.host.finish_dialog_if_done();
         self.click_this_frame = None;
+        self.chrome_ate_click = false;
     }
 }
 
@@ -809,6 +1106,8 @@ impl ApplicationHandler for App {
                 ..
             } => {
                 self.click_this_frame = Some(self.cursor_pos);
+                // World hit-test immediately; chrome buttons resolve on next
+                // render via UiInput (same click snapshot).
                 self.click_world();
             }
             WindowEvent::KeyboardInput {
@@ -841,10 +1140,90 @@ impl ApplicationHandler for App {
     }
 }
 
+/// Oracle playtest → JSON report (Fara/CUA can emit the same shape later).
+fn run_playtest_report(path: &Path) {
+    let (result, ms) = timed(|| {
+        let mut tasks = Vec::new();
+
+        // gate: N before look
+        {
+            let mut host = FlagHost::new(load_dialog());
+            host.dispatch_action("next_day");
+            let ok = !host.andy_arrived()
+                && host.status.contains("Examine Red's cell first");
+            tasks.push(TaskResult {
+                id: "gate_n_before_look",
+                description: "Next day rejected before examining Red's cell",
+                passed: ok,
+                steps: 1,
+                detail: host.status.clone(),
+            });
+        }
+
+        // full spine
+        let (walk_ok, walk_detail) = match walkthrough() {
+            Ok(()) => (true, "spine complete".into()),
+            Err(e) => (false, e),
+        };
+        tasks.push(TaskResult {
+            id: "quest_cellblock_spine",
+            description: "Look Red → Next day → Look Andy → Talk → Loose stone",
+            passed: walk_ok,
+            steps: 8,
+            detail: walk_detail,
+        });
+
+        // chrome self-check (static contract for discoverability)
+        let chrome_ok = STATUS_H >= 40.0 && VERB_H >= 48.0;
+        tasks.push(TaskResult {
+            id: "chrome_layout",
+            description: "Status strip + verb bar chrome constants present",
+            passed: chrome_ok,
+            steps: 0,
+            detail: format!("STATUS_H={STATUS_H} VERB_H={VERB_H}"),
+        });
+
+        let rubric = score_rubric(&tasks, chrome_ok);
+        PlaytestReport {
+            game: "shawshank_cellblock",
+            mode: "oracle",
+            elapsed_ms: 0, // filled below
+            tasks,
+            rubric,
+        }
+    });
+    let mut report = result;
+    report.elapsed_ms = ms;
+    if let Err(e) = report.write_to(path) {
+        eprintln!("write playtest report: {e}");
+        std::process::exit(1);
+    }
+    println!("{}", report.to_json());
+    println!(
+        "playtest {} → {} (overall={:.2})",
+        if report.passed() { "PASS" } else { "FAIL" },
+        path.display(),
+        report.rubric.overall
+    );
+    if !report.passed() {
+        std::process::exit(1);
+    }
+}
+
 fn main() {
     tracing_subscriber::fmt()
         .with_env_filter("info")
         .init();
+
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(i) = args.iter().position(|a| a == "--playtest") {
+        let path = args
+            .get(i + 1)
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("shawshank_playtest.json"));
+        run_playtest_report(&path);
+        return;
+    }
 
     match walkthrough() {
         Ok(()) => tracing::info!("walkthrough OK"),
@@ -854,7 +1233,7 @@ fn main() {
         }
     }
 
-    if std::env::args().any(|a| a == "--headless") {
+    if args.iter().any(|a| a == "--headless") {
         return;
     }
 
