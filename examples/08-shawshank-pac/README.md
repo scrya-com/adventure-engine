@@ -20,5 +20,5 @@ cargo run -p example-08-shawshank-pac   # windowed
 
 Shortcuts: `1`–`4` force spine steps. Esc quit.
 
-See `NCP_MAPPING.md`, `PLAYTEST.md` (oracle score + Fara-7B notes).  
+See `NCP_MAPPING.md`, `PLAYTEST.md` (oracle score + **Holo 3.1** CUA notes).  
 Stills: `examples/06-shawshank-pac/assets/`.

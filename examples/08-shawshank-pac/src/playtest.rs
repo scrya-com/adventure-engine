@@ -1,8 +1,9 @@
 //! Deterministic playtest scoring for Cell Block C MVP.
 //!
-//! This is the **oracle** path (perfect knowledge). A future Fara-7B / CUA
+//! This is the **oracle** path (perfect knowledge). A Holo 3.1 (or other CUA)
 //! path can produce the same [`PlaytestReport`] JSON by driving the window
 //! and filling `tasks` from observed success/failure.
+//! See `PLAYTEST.md` — prefer Hcompany Holo-3.1 over Fara-7B.
 //!
 //! ```bash
 //! cargo run -p example-08-shawshank-pac -- --playtest /tmp/shawshank_score.json
@@ -89,7 +90,7 @@ impl PlaytestReport {
             s.push_str(&format!("    }}{comma}\n"));
         }
         s.push_str("  ],\n");
-        s.push_str("  \"fara_notes\": \"Optional: run Fara-7B against the windowed host with the same task ids; compare CUA success to oracle. Do not use Fara as content gen.\"\n");
+        s.push_str("  \"cua_notes\": \"Optional: run Holo-3.1 (Hcompany) against the windowed host with the same task ids; compare CUA success to oracle. Local: vllm serve Hcompany/Holo-3.1-4B. Not content gen.\"\n");
         s.push_str("}\n");
         s
     }
@@ -166,6 +167,6 @@ mod tests {
         };
         let j = r.to_json();
         assert!(j.contains("\"passed\": true"));
-        assert!(j.contains("fara_notes"));
+        assert!(j.contains("cua_notes"));
     }
 }

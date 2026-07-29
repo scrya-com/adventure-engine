@@ -1140,7 +1140,7 @@ impl ApplicationHandler for App {
     }
 }
 
-/// Oracle playtest → JSON report (Fara/CUA can emit the same shape later).
+/// Oracle playtest → JSON report (Holo 3.1 / CUA can emit the same shape later).
 fn run_playtest_report(path: &Path) {
     let (result, ms) = timed(|| {
         let mut tasks = Vec::new();
