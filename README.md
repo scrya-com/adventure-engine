@@ -33,6 +33,20 @@ Repository directory name remains `adventure-engine` (crate paths) until a full 
 
 <p align="center"><sub>Walk graphs · dialog trees · verb coin — the thread that weaves playable systems.</sub></p>
 
+## Example — Shawshank PAC (Cell Block C)
+
+Playable SCUMM-style chrome on a full cellblock still: status strip, **LOOK / TALK / USE**, **NEXT DAY**, face-cropped hub portraits, door-aligned hotspots.
+
+<p align="center">
+  <img src="docs/assets/readme/shawshank-pac.jpg" alt="Shawshank PAC — Cell Block C (example-08): cellblock still, hub portraits, LOOK/TALK/USE bar, and Red dialog choices" width="100%"/>
+</p>
+
+```bash
+cargo run -p example-08-shawshank-pac
+```
+
+Details: [`examples/08-shawshank-pac/README.md`](examples/08-shawshank-pac/README.md) · playtest notes: [`PLAYTEST.md`](examples/08-shawshank-pac/PLAYTEST.md).
+
 ## Clone & build
 
 ```bash
@@ -40,7 +54,7 @@ git clone git@github.com:scrya-com/adventure-engine.git
 cd adventure-engine
 cargo build --workspace
 cargo test --workspace
-cargo run -p example-05-dialog
+cargo run -p example-08-shawshank-pac
 ```
 
 ---
