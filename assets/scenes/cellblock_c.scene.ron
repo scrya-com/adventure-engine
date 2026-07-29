@@ -6,6 +6,10 @@
 //   hs_andy_cell_talk    only when CanTalkAndy (after Look on occupied cell)
 //   hs_contraband_spot   only when KnowsRedBusiness (after first-meeting dialog)
 // Spine: ExaminedCell → AndyArrived (N) → Noticed/CanTalk → Met/KnowsRed → stone
+//
+// Polygons are calibrated to the 1280×720 `cellblock_bg.png` door bars
+// (y-down norm), NOT the legacy NCP 2560×1080 scroll bounds — those sat
+// on the mid-corridor pillar and did not match the art.
 (
     name: "shawshank_cellblock",
     entry_room: "cellblock_c",
@@ -19,13 +23,14 @@
             ),
             hotspots: [
                 (
+                    // Red — upper door face (portrait-sized click target).
                     id: "hs_red_cell",
                     kind: Examine,
                     polygon: [
-                        (0.15625, 0.18518518),
-                        (0.234375, 0.18518518),
-                        (0.234375, 0.5555556),
-                        (0.15625, 0.5555556),
+                        (0.055, 0.28),
+                        (0.145, 0.28),
+                        (0.145, 0.48),
+                        (0.055, 0.48),
                     ],
                     cursor: Named("look"),
                     on_click: (
@@ -34,14 +39,14 @@
                     ),
                 ),
                 (
-                    // Examine half of dual Andy hotspot (NCP: single hs_andy_cell + examine verb).
+                    // Andy — second door face (not the full pillar).
                     id: "hs_andy_cell",
                     kind: Examine,
                     polygon: [
-                        (0.234375, 0.18518518),
-                        (0.3125, 0.18518518),
-                        (0.3125, 0.5555556),
-                        (0.234375, 0.5555556),
+                        (0.232, 0.26),
+                        (0.292, 0.26),
+                        (0.292, 0.44),
+                        (0.232, 0.44),
                     ],
                     cursor: Named("look"),
                     on_click: (
@@ -50,14 +55,14 @@
                     ),
                 ),
                 (
-                    // Talk half — host-hidden until CanTalkAndy (after Look on occupied).
+                    // Talk — same face geometry as examine; host-hidden until can_talk.
                     id: "hs_andy_cell_talk",
                     kind: Talk,
                     polygon: [
-                        (0.234375, 0.18518518),
-                        (0.3125, 0.18518518),
-                        (0.3125, 0.5555556),
-                        (0.234375, 0.5555556),
+                        (0.232, 0.26),
+                        (0.292, 0.26),
+                        (0.292, 0.44),
+                        (0.232, 0.44),
                     ],
                     cursor: Named("talk"),
                     on_click: (
@@ -66,14 +71,14 @@
                     ),
                 ),
                 (
-                    // Contraband — host-hidden until KnowsRedBusiness (post dialog).
+                    // Loose stone at the base of Red's door bars.
                     id: "hs_contraband_spot",
                     kind: Use,
                     polygon: [
-                        (0.125, 0.4814815),
-                        (0.1484375, 0.4814815),
-                        (0.1484375, 0.537037),
-                        (0.125, 0.537037),
+                        (0.078, 0.575),
+                        (0.122, 0.575),
+                        (0.122, 0.625),
+                        (0.078, 0.625),
                     ],
                     cursor: Named("use"),
                     on_click: (

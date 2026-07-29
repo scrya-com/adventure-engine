@@ -394,11 +394,13 @@ impl WgpuRenderer {
 
     /// Build an orthographic view_proj for top-left origin pixel space.
     ///
-    /// Maps pixel (0,0) to clip-space top-left (-1, -1) by flipping the
-    /// vertical axis against wgpu's Y-up NDC. Pixel (width, height)
-    /// maps to (1, 1).
+    /// wgpu NDC is Y-up (`y = +1` at the top of the viewport). UI / winit
+    /// pixel space is Y-down with origin at the top-left, so we invert the
+    /// vertical axis: pixel `(0, 0)` → clip `(-1, +1)`, pixel
+    /// `(width, height)` → clip `(+1, -1)`.
     pub fn ortho(width: f32, height: f32) -> Mat4 {
-        Mat4::orthographic_rh(0.0, width, 0.0, height, -1.0, 1.0)
+        // left, right, bottom, top — bottom > top flips Y for y-down pixels.
+        Mat4::orthographic_rh(0.0, width, height, 0.0, -1.0, 1.0)
     }
 
     /// Build vertices for a list of batches (used by tests + the frame).
@@ -596,10 +598,18 @@ mod tests {
     }
 
     #[test]
-    fn ortho_maps_origin_to_zero_clip() {
+    fn ortho_maps_top_left_origin_to_ndc_top_left() {
         let m = WgpuRenderer::ortho(800.0, 600.0);
+        // Pixel (0,0) → NDC top-left (-1, +1)
         let origin = m * Vec4::new(0.0, 0.0, 0.0, 1.0);
-        assert!((origin.x + 1.0).abs() < 1e-4);
-        assert!((origin.y + 1.0).abs() < 1e-4);
+        assert!((origin.x + 1.0).abs() < 1e-4, "x={}", origin.x);
+        assert!((origin.y - 1.0).abs() < 1e-4, "y={}", origin.y);
+        // Pixel (width, height) → NDC bottom-right (+1, -1)
+        let br = m * Vec4::new(800.0, 600.0, 0.0, 1.0);
+        assert!((br.x - 1.0).abs() < 1e-4, "x={}", br.x);
+        assert!((br.y + 1.0).abs() < 1e-4, "y={}", br.y);
+        // Pixel mid-top edge stays high in NDC Y (not flipped back)
+        let mid_top = m * Vec4::new(400.0, 0.0, 0.0, 1.0);
+        assert!((mid_top.y - 1.0).abs() < 1e-4, "y={}", mid_top.y);
     }
 }

@@ -70,18 +70,168 @@ impl Verb {
             Verb::Use => "USE",
         }
     }
+
+    /// Whether this verb should *highlight* a hotspot of `kind`.
+    /// (Click routing is separate in `apply_verb_on_hotspot`.)
+    fn matches_kind(self, kind: HotspotKind) -> bool {
+        match self {
+            Verb::Look => matches!(kind, HotspotKind::Examine),
+            Verb::Talk => matches!(kind, HotspotKind::Talk),
+            Verb::Use => matches!(kind, HotspotKind::Use),
+        }
+    }
 }
 
 /// Chrome strip heights (px).
 const STATUS_H: f32 = 44.0;
 const VERB_H: f32 = 56.0;
 
-/// HTML demo portrait layout (`style.css`: width 11%, left/top %).
-const PORT_W: f32 = 0.14;
-const PORT_RED_X: f32 = 0.16;
-const PORT_RED_Y: f32 = 0.26;
-const PORT_ANDY_X: f32 = 0.30;
-const PORT_ANDY_Y: f32 = 0.26;
+/// Portrait fills most of the (already portrait-sized) hotspot face.
+const PORT_SIZE_OF_HS: f32 = 0.90;
+/// Slight inset from the top of the face rect.
+const PORT_Y_BIAS: f32 = 0.05;
+/// Hotspot / card frame thickness in CSS-ish px (scaled with window height).
+const HS_BORDER_PX: f32 = 2.0;
+/// Extra pad around portrait for hover rings (px @ 720p).
+const PORT_HOVER_PAD: f32 = 5.0;
+
+/// Face crop on the character-sheet PNGs (polaroid chrome out).
+const PORT_FACE_UV: UvRect = UvRect {
+    min: Vec2 { x: 0.22, y: 0.10 },
+    max: Vec2 { x: 0.78, y: 0.64 },
+};
+
+/// Axis-aligned bounds of a hotspot polygon (norm space). `None` if empty.
+fn hotspot_aabb(poly: &[Vec2]) -> Option<(f32, f32, f32, f32)> {
+    if poly.is_empty() {
+        return None;
+    }
+    let mut min_x = f32::MAX;
+    let mut min_y = f32::MAX;
+    let mut max_x = f32::MIN;
+    let mut max_y = f32::MIN;
+    for p in poly {
+        min_x = min_x.min(p.x);
+        min_y = min_y.min(p.y);
+        max_x = max_x.max(p.x);
+        max_y = max_y.max(p.y);
+    }
+    Some((min_x, min_y, max_x, max_y))
+}
+
+/// Center a square portrait inside a hotspot AABB. Norm-space `(x0, y0, side)`.
+fn portrait_in_hotspot(aabb: (f32, f32, f32, f32)) -> (f32, f32, f32) {
+    let (x0, y0, x1, y1) = aabb;
+    let hs_w = (x1 - x0).max(0.01);
+    let hs_h = (y1 - y0).max(0.01);
+    let side = (hs_w * PORT_SIZE_OF_HS).min(hs_h * 0.92);
+    let px = x0 + (hs_w - side) * 0.5;
+    let py = y0 + hs_h * PORT_Y_BIAS;
+    (px, py, side)
+}
+
+/// Solid axis-aligned rect (pixel space) for fills / border edges.
+fn solid_rect(
+    texture: TextureId,
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+    layer: i32,
+    tint: Tint,
+) -> DrawElement {
+    textured_quad(texture, x0, y0, x1, y1, layer, tint)
+}
+
+/// 1px-class border around a pixel-space rect (four edge quads).
+fn push_border(
+    batcher: &mut ElementBatcher,
+    texture: TextureId,
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+    t: f32,
+    layer: i32,
+    tint: Tint,
+) {
+    let t = t.max(1.0);
+    batcher.push(solid_rect(texture, x0, y0, x1, y0 + t, layer, tint));
+    batcher.push(solid_rect(texture, x0, y1 - t, x1, y1, layer, tint));
+    batcher.push(solid_rect(texture, x0, y0, x0 + t, y1, layer, tint));
+    batcher.push(solid_rect(texture, x1 - t, y0, x1, y1, layer, tint));
+}
+
+/// Mugshot card: drop shadow + dark mat + gold double-frame + face crop.
+fn push_portrait_card(
+    batcher: &mut ElementBatcher,
+    white: TextureId,
+    tex: TextureId,
+    px0: f32,
+    py0: f32,
+    px1: f32,
+    py1: f32,
+    scale: f32,
+    border_t: f32,
+) {
+    let pad = 3.0 * scale;
+    let shadow = 4.0 * scale;
+    // Soft drop shadow
+    batcher.push(solid_rect(
+        white,
+        px0 - pad + shadow,
+        py0 - pad + shadow,
+        px1 + pad + shadow,
+        py1 + pad + shadow,
+        2,
+        Tint::rgba(0.0, 0.0, 0.0, 0.45),
+    ));
+    // Mat
+    batcher.push(solid_rect(
+        white,
+        px0 - pad,
+        py0 - pad,
+        px1 + pad,
+        py1 + pad,
+        2,
+        Tint::rgba(0.06, 0.06, 0.07, 0.95),
+    ));
+    // Outer gold
+    push_border(
+        batcher,
+        white,
+        px0 - pad,
+        py0 - pad,
+        px1 + pad,
+        py1 + pad,
+        border_t,
+        2,
+        Tint::rgba(0.82, 0.68, 0.40, 0.92),
+    );
+    // Inner highlight line
+    let inn = pad * 0.45;
+    push_border(
+        batcher,
+        white,
+        px0 - inn,
+        py0 - inn,
+        px1 + inn,
+        py1 + inn,
+        (border_t * 0.6).max(1.0),
+        2,
+        Tint::rgba(0.95, 0.88, 0.65, 0.35),
+    );
+    batcher.push(textured_quad_uv(
+        tex,
+        px0,
+        py0,
+        px1,
+        py1,
+        2,
+        Tint::IDENTITY,
+        PORT_FACE_UV,
+    ));
+}
 
 fn try_repo_file(rel: &str) -> Option<PathBuf> {
     let candidates = [
@@ -116,12 +266,30 @@ fn textured_quad(
     layer: i32,
     tint: Tint,
 ) -> DrawElement {
+    textured_quad_uv(texture, x0, y0, x1, y1, layer, tint, UvRect::FULL)
+}
+
+/// Same as [`textured_quad`] with a sub-rect of the texture (normalized UVs).
+fn textured_quad_uv(
+    texture: TextureId,
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+    layer: i32,
+    tint: Tint,
+    uv: UvRect,
+) -> DrawElement {
+    let u0 = uv.min.x;
+    let v0 = uv.min.y;
+    let u1 = uv.max.x;
+    let v1 = uv.max.y;
     DrawElement {
         layer,
         shader: ShaderKind::Sprite,
         effect: DrawEffect::NONE,
         texture,
-        uv: UvRect::FULL,
+        uv,
         tint,
         positions: vec![
             Vec2::new(x0, y0),
@@ -131,13 +299,14 @@ fn textured_quad(
             Vec2::new(x1, y1),
             Vec2::new(x0, y1),
         ],
+        // TL → TR → BR · TL → BR → BL  (y-down pixel space, v-down texture)
         uvs: vec![
-            Vec2::new(0.0, 0.0),
-            Vec2::new(1.0, 0.0),
-            Vec2::new(1.0, 1.0),
-            Vec2::new(0.0, 0.0),
-            Vec2::new(1.0, 1.0),
-            Vec2::new(0.0, 1.0),
+            Vec2::new(u0, v0),
+            Vec2::new(u1, v0),
+            Vec2::new(u1, v1),
+            Vec2::new(u0, v0),
+            Vec2::new(u1, v1),
+            Vec2::new(u0, v1),
         ],
     }
 }
@@ -890,90 +1059,144 @@ impl App {
             batcher.push(textured_quad(bg, 0.0, 0.0, w, h, 0, Tint::IDENTITY));
         }
 
-        // Layer 1 — hub portraits (larger, after look / next day)
-        let side = PORT_W * w;
-        if self.host.examined_cell() {
-            if let Some(tex) = self.port_red {
-                let x0 = PORT_RED_X * w;
-                let y0 = PORT_RED_Y * h;
-                batcher.push(textured_quad(
-                    tex,
-                    x0,
-                    y0,
-                    x0 + side,
-                    y0 + side,
-                    1,
-                    Tint::IDENTITY,
-                ));
-            }
-        }
-        if self.host.andy_arrived() {
-            if let Some(tex) = self.port_andy {
-                let x0 = PORT_ANDY_X * w;
-                let y0 = PORT_ANDY_Y * h;
-                batcher.push(textured_quad(
-                    tex,
-                    x0,
-                    y0,
-                    x0 + side,
-                    y0 + side,
-                    1,
-                    Tint::IDENTITY,
-                ));
-            }
-        }
-
-        // Layer 2 — bright hotspots + hover label
+        // Visual polish:
+        //  - Portraits are mugshot *cards* (shadow + gold double-frame).
+        //  - Verb chrome hugs the portrait (or stone), never a tall empty door slab.
+        //  - Idle: no outline on cells (card is the marker); stone keeps a gold glint.
+        //  - Hover: soft ring around the card + label.
         let hover_norm = Vec2::new(self.cursor_pos.x / w, self.cursor_pos.y / h);
+        let scale = h / 720.0;
+        let border_t = (HS_BORDER_PX * scale).max(1.5);
+        let hover_pad = PORT_HOVER_PAD * scale;
+        let verb = self.verb;
+
+        // Precompute portrait pixel rects (if unlocked) so chrome can hug them.
+        let port_red_px: Option<(f32, f32, f32, f32)> = self
+            .scene
+            .entry()
+            .and_then(|room| {
+                if !self.host.examined_cell() {
+                    return None;
+                }
+                let hs = room.hotspot("hs_red_cell")?;
+                let aabb = hotspot_aabb(&hs.polygon)?;
+                let (nx, ny, side) = portrait_in_hotspot(aabb);
+                Some((nx * w, ny * h, (nx + side) * w, (ny + side) * h))
+            });
+        let port_andy_px: Option<(f32, f32, f32, f32)> = self
+            .scene
+            .entry()
+            .and_then(|room| {
+                if !self.host.andy_arrived() {
+                    return None;
+                }
+                let hs = room.hotspot("hs_andy_cell")?;
+                let aabb = hotspot_aabb(&hs.polygon)?;
+                let (nx, ny, side) = portrait_in_hotspot(aabb);
+                Some((nx * w, ny * h, (nx + side) * w, (ny + side) * h))
+            });
+
         if let Some(room) = self.scene.entry() {
+            // Unique active+verb-matching hotspots.
+            // port_slot: 0=none/stone, 1=red, 2=andy
+            let mut seen: Vec<(
+                (i32, i32, i32, i32),
+                HotspotKind,
+                bool,
+                &'static str,
+                u8,
+            )> = Vec::new();
             for hs in &room.hotspots {
                 if !self.host.hotspot_active(hs.id.as_str()) {
                     continue;
                 }
-                if hs.polygon.len() < 4 {
+                if !verb.matches_kind(hs.kind) {
                     continue;
                 }
-                let p0 = hs.polygon[0];
-                let p1 = hs.polygon[1];
-                let p2 = hs.polygon[2];
-                let p3 = hs.polygon[3];
-                let hovering = hs.contains(hover_norm);
-                let (r, g, b, a) = match (hs.kind, hovering) {
-                    (HotspotKind::Talk, true) => (0.3, 0.95, 0.45, 0.45),
-                    (HotspotKind::Talk, false) => (0.2, 0.75, 0.35, 0.28),
-                    (HotspotKind::Use, true) => (0.95, 0.75, 0.2, 0.5),
-                    (HotspotKind::Use, false) => (0.85, 0.6, 0.15, 0.32),
-                    (_, true) => (0.45, 0.7, 1.0, 0.42),
-                    (_, false) => (0.35, 0.55, 0.9, 0.26),
+                let Some((nx0, ny0, nx1, ny1)) = hotspot_aabb(&hs.polygon) else {
+                    continue;
                 };
-                batcher.push(DrawElement {
-                    layer: 2,
-                    shader: ShaderKind::Sprite,
-                    effect: DrawEffect::NONE,
-                    texture: white,
-                    uv: UvRect::FULL,
-                    tint: Tint::rgba(r, g, b, a),
-                    positions: vec![
-                        Vec2::new(p0.x * w, p0.y * h),
-                        Vec2::new(p1.x * w, p1.y * h),
-                        Vec2::new(p2.x * w, p2.y * h),
-                        Vec2::new(p0.x * w, p0.y * h),
-                        Vec2::new(p2.x * w, p2.y * h),
-                        Vec2::new(p3.x * w, p3.y * h),
-                    ],
-                    uvs: vec![
-                        Vec2::ZERO,
-                        Vec2::new(1.0, 0.0),
-                        Vec2::new(1.0, 1.0),
-                        Vec2::ZERO,
-                        Vec2::new(1.0, 1.0),
-                        Vec2::new(0.0, 1.0),
-                    ],
-                });
-                if hovering {
-                    let label = Self::hotspot_label(hs.id.as_str());
-                    let lx = p0.x * w;
-                    let ly = (p0.y * h - 18.0).max(STATUS_H + 4.0);
+                let key = (
+                    (nx0 * 1000.0).round() as i32,
+                    (ny0 * 1000.0).round() as i32,
+                    (nx1 * 1000.0).round() as i32,
+                    (ny1 * 1000.0).round() as i32,
+                );
+                let hovering = hs.contains(hover_norm);
+                let label = Self::hotspot_label(hs.id.as_str());
+                let port_slot: u8 = match hs.id.as_str() {
+                    "hs_red_cell" => 1,
+                    "hs_andy_cell" | "hs_andy_cell_talk" => 2,
+                    _ => 0,
+                };
+                if let Some(slot) = seen.iter_mut().find(|(k, ..)| *k == key) {
+                    slot.2 |= hovering;
+                    if matches!(hs.kind, HotspotKind::Talk | HotspotKind::Use) {
+                        slot.1 = hs.kind;
+                    }
+                    if hovering {
+                        slot.3 = label;
+                    }
+                } else {
+                    seen.push((key, hs.kind, hovering, label, port_slot));
+                }
+            }
+
+            for (key, kind, hovering, label, port_slot) in &seen {
+                // Prefer hugging the portrait card when one exists.
+                let (x0, y0, x1, y1) = match (*port_slot, port_red_px, port_andy_px) {
+                    (1, Some((a, b, c, d)), _) => (
+                        a - hover_pad,
+                        b - hover_pad,
+                        c + hover_pad,
+                        d + hover_pad,
+                    ),
+                    (2, _, Some((a, b, c, d))) => (
+                        a - hover_pad,
+                        b - hover_pad,
+                        c + hover_pad,
+                        d + hover_pad,
+                    ),
+                    _ => {
+                        let (kx0, ky0, kx1, ky1) = *key;
+                        (
+                            (kx0 as f32 / 1000.0) * w,
+                            (ky0 as f32 / 1000.0) * h,
+                            (kx1 as f32 / 1000.0) * w,
+                            (ky1 as f32 / 1000.0) * h,
+                        )
+                    }
+                };
+
+                if *hovering {
+                    let (fill, border) = match kind {
+                        HotspotKind::Talk => (
+                            Tint::rgba(0.3, 0.85, 0.45, 0.16),
+                            Tint::rgba(0.7, 0.95, 0.55, 0.95),
+                        ),
+                        HotspotKind::Use => (
+                            Tint::rgba(0.95, 0.75, 0.2, 0.20),
+                            Tint::rgba(1.0, 0.85, 0.35, 0.95),
+                        ),
+                        _ => (
+                            Tint::rgba(0.4, 0.65, 0.9, 0.14),
+                            Tint::rgba(0.9, 0.78, 0.45, 0.95),
+                        ),
+                    };
+                    batcher.push(solid_rect(white, x0, y0, x1, y1, 3, fill));
+                    push_border(&mut batcher, white, x0, y0, x1, y1, border_t + 0.5, 3, border);
+                    let tw = text_width(label, 2.0);
+                    let lx = ((x0 + x1) * 0.5 - tw * 0.5).max(8.0);
+                    let ly = (y0 - 22.0).max(STATUS_H + 4.0);
+                    batcher.push(solid_rect(
+                        white,
+                        lx - 8.0,
+                        ly - 4.0,
+                        lx + tw + 8.0,
+                        ly + 18.0,
+                        4,
+                        Tint::rgba(0.02, 0.03, 0.05, 0.82),
+                    ));
                     draw_text(
                         &mut ui_elements,
                         white,
@@ -981,10 +1204,52 @@ impl App {
                         ly,
                         label,
                         2.0,
-                        Tint::rgba(1.0, 1.0, 0.85, 1.0),
+                        Tint::rgba(0.95, 0.85, 0.55, 1.0),
                         UI_LAYER + 6,
                     );
+                } else if matches!(kind, HotspotKind::Use) {
+                    // Discoverable stone without a slab.
+                    push_border(
+                        &mut batcher,
+                        white,
+                        x0,
+                        y0,
+                        x1,
+                        y1,
+                        border_t,
+                        3,
+                        Tint::rgba(0.95, 0.75, 0.25, 0.5),
+                    );
                 }
+                // Cell doors: idle chrome = none (the mugshot card is enough).
+            }
+
+            // Draw portrait cards on top of bg, under hover ring (layer 2).
+            if let (Some(tex), Some((px0, py0, px1, py1))) = (self.port_red, port_red_px) {
+                push_portrait_card(
+                    &mut batcher,
+                    white,
+                    tex,
+                    px0,
+                    py0,
+                    px1,
+                    py1,
+                    scale,
+                    border_t,
+                );
+            }
+            if let (Some(tex), Some((px0, py0, px1, py1))) = (self.port_andy, port_andy_px) {
+                push_portrait_card(
+                    &mut batcher,
+                    white,
+                    tex,
+                    px0,
+                    py0,
+                    px1,
+                    py1,
+                    scale,
+                    border_t,
+                );
             }
         }
 
@@ -1302,5 +1567,71 @@ mod tests {
         assert_eq!(e.positions.len(), 6);
         assert_eq!(e.uvs.len(), 6);
         assert_eq!(e.texture, TextureId::FIRST);
+        assert_eq!(e.uvs[0], Vec2::new(0.0, 0.0));
+        assert_eq!(e.uvs[2], Vec2::new(1.0, 1.0));
+    }
+
+    #[test]
+    fn portrait_face_uv_crops_sheet_chrome() {
+        let e = textured_quad_uv(
+            TextureId::FIRST,
+            0.0,
+            0.0,
+            100.0,
+            100.0,
+            1,
+            Tint::IDENTITY,
+            PORT_FACE_UV,
+        );
+        assert_eq!(e.uv, PORT_FACE_UV);
+        // TL uses crop min; BR uses crop max
+        assert_eq!(e.uvs[0], PORT_FACE_UV.min);
+        assert_eq!(e.uvs[2], PORT_FACE_UV.max);
+        // Face window is inset (not full sheet)
+        assert!(PORT_FACE_UV.min.x > 0.05 && PORT_FACE_UV.min.y > 0.05);
+        assert!(PORT_FACE_UV.max.x < 0.95 && PORT_FACE_UV.max.y < 0.95);
+        assert!(PORT_FACE_UV.max.x - PORT_FACE_UV.min.x > 0.4);
+        assert!(PORT_FACE_UV.max.y - PORT_FACE_UV.min.y > 0.4);
+    }
+
+    #[test]
+    fn door_hotspots_align_left_wall_and_portraits_sit_inside() {
+        let scene = load_scene();
+        let room = scene.entry().expect("entry room");
+        let red = room.hotspot("hs_red_cell").expect("red");
+        let andy = room.hotspot("hs_andy_cell").expect("andy");
+        let red_bb = hotspot_aabb(&red.polygon).unwrap();
+        let andy_bb = hotspot_aabb(&andy.polygon).unwrap();
+
+        // Portrait-sized face targets on the left wall, Andy further down.
+        assert!(
+            red_bb.0 < 0.08 && red_bb.2 < 0.20,
+            "red face too far right: {red_bb:?}"
+        );
+        assert!(
+            andy_bb.0 > red_bb.2,
+            "andy should start after red: red={red_bb:?} andy={andy_bb:?}"
+        );
+        assert!(andy_bb.2 < 0.35, "andy face too deep: {andy_bb:?}");
+        // Not tall empty pillar slabs
+        assert!(
+            red_bb.3 - red_bb.1 < 0.28,
+            "red face too tall: {red_bb:?}"
+        );
+        assert!(
+            andy_bb.3 - andy_bb.1 < 0.28,
+            "andy face too tall: {andy_bb:?}"
+        );
+
+        for (name, bb) in [("red", red_bb), ("andy", andy_bb)] {
+            let (px, py, side) = portrait_in_hotspot(bb);
+            assert!(
+                px >= bb.0 - 1e-4 && py >= bb.1 - 1e-4 && px + side <= bb.2 + 1e-4,
+                "{name} portrait escapes hotspot: port=({px},{py},{side}) bb={bb:?}"
+            );
+            let pcx = px + side * 0.5;
+            let hcx = (bb.0 + bb.2) * 0.5;
+            assert!((pcx - hcx).abs() < 0.02, "{name} portrait not centered");
+        }
     }
 }
