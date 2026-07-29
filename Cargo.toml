@@ -18,6 +18,7 @@ members = [
     "crates/cutscene",
     "crates/localization",
     "crates/engine",
+    "crates/workflow_graph",
     "examples/01-window",
     "examples/02-sprite",
     "examples/03-hotspot",
@@ -26,6 +27,7 @@ members = [
     "examples/06-audio-save",
     "examples/07-inventory",
     "examples/08-shawshank-pac",
+    "examples/09-workflow-graph",
 ]
 
 [workspace.package]
@@ -56,6 +58,7 @@ adventure-scripting = { path = "crates/scripting" }
 adventure-cutscene = { path = "crates/cutscene" }
 adventure-localization = { path = "crates/localization" }
 adventure-engine = { path = "crates/engine" }
+adventure-workflow-graph = { path = "crates/workflow_graph" }
 
 # Foundation
 glam = { version = "0.29", features = ["serde"] }

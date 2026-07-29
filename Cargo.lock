@@ -226,6 +226,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "adventure-workflow-graph"
+version = "0.1.0"
+dependencies = [
+ "adventure-core",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "ahash"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1275,6 +1285,14 @@ dependencies = [
  "tracing-subscriber",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "example-09-workflow-graph"
+version = "0.1.0"
+dependencies = [
+ "adventure-workflow-graph",
+ "serde_json",
 ]
 
 [[package]]

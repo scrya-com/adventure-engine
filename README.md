@@ -24,7 +24,7 @@ Repository directory name remains `adventure-engine` (crate paths) until a full 
 | | |
 |---|---|
 | **Runtime** | Rust workspace · wgpu · bevy_ecs (world only) · Rhai · RON |
-| **Phases** | 0–7 done · 8–9 next |
+| **Phases** | 0–7 done · 8–9 next · **workflow graph viz** (example-09) |
 | **Sister** | Flutter Scene at [beta.scrya.com/scene](https://beta.scrya.com/scene/?play=1&room=shawshank) |
 
 <p align="center">
@@ -46,6 +46,21 @@ cargo run -p example-08-shawshank-pac
 ```
 
 Details: [`examples/08-shawshank-pac/README.md`](examples/08-shawshank-pac/README.md) · playtest notes: [`PLAYTEST.md`](examples/08-shawshank-pac/PLAYTEST.md).
+
+## Rhai workflow graphs (Grok Build)
+
+Interpret multi-agent `.rhai` workflows as a structural DAG. **Rust parses; Flutter renders.**
+
+```bash
+# Backend (JSON/Mermaid + HTTP for Flutter)
+cargo run -p example-09-workflow-graph -- --json path/to/w.rhai
+cargo run -p example-09-workflow-graph -- --serve --port 8791
+
+# UI (sibling repo)
+cd ../PresidentialDilema-FastApi/workflow_graph_ui && flutter run -d chrome
+```
+
+Crate: [`crates/workflow_graph`](crates/workflow_graph) · HTTP: [`examples/09-workflow-graph`](examples/09-workflow-graph) · Flutter: `workflow_graph_ui/` · snapshots: [`docs/workflows/`](docs/workflows/).
 
 ## Clone & build
 

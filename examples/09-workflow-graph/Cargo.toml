@@ -1,0 +1,19 @@
+[package]
+name = "example-09-workflow-graph"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Interpret Grok Rhai workflows → Mermaid / JSON / live wgpu DAG"
+publish.workspace = true
+
+[[bin]]
+name = "example-09-workflow-graph"
+path = "src/main.rs"
+
+[dependencies]
+adventure-workflow-graph = { path = "../../crates/workflow_graph" }
+serde_json = { workspace = true }
+
+[lints.rust]
+unexpected_cfgs = { level = "allow" }
