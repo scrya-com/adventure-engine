@@ -12,15 +12,8 @@ name = "example-09-workflow-graph"
 path = "src/main.rs"
 
 [dependencies]
-adventure-core = { path = "../../crates/core" }
 adventure-workflow-graph = { path = "../../crates/workflow_graph" }
-adventure-render2d = { path = "../../crates/render2d" }
-winit = { workspace = true, features = ["rwh_06"] }
-wgpu = "22"
-pollster = { workspace = true }
-glam = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
+serde_json = { workspace = true }
 
 [lints.rust]
 unexpected_cfgs = { level = "allow" }

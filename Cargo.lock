@@ -1291,15 +1291,8 @@ dependencies = [
 name = "example-09-workflow-graph"
 version = "0.1.0"
 dependencies = [
- "adventure-core",
- "adventure-render2d",
  "adventure-workflow-graph",
- "glam",
- "pollster",
- "tracing",
- "tracing-subscriber",
- "wgpu",
- "winit",
+ "serde_json",
 ]
 
 [[package]]

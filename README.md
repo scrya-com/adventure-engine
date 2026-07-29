@@ -49,15 +49,18 @@ Details: [`examples/08-shawshank-pac/README.md`](examples/08-shawshank-pac/READM
 
 ## Rhai workflow graphs (Grok Build)
 
-Interpret multi-agent `.rhai` workflows as a structural DAG (phases / agents / parallel barriers) — Mermaid for docs, wgpu for an in-engine view.
+Interpret multi-agent `.rhai` workflows as a structural DAG. **Rust parses; Flutter renders.**
 
 ```bash
-cargo run -p example-09-workflow-graph -- \
-  ../PresidentialDilema-FastApi/.grok/workflows/game-engine-demos.rhai
-cargo run -p example-09-workflow-graph -- --window path/to/workflow.rhai
+# Backend (JSON/Mermaid + HTTP for Flutter)
+cargo run -p example-09-workflow-graph -- --json path/to/w.rhai
+cargo run -p example-09-workflow-graph -- --serve --port 8791
+
+# UI (sibling repo)
+cd ../PresidentialDilema-FastApi/workflow_graph_ui && flutter run -d chrome
 ```
 
-Crate: [`crates/workflow_graph`](crates/workflow_graph) · snapshots: [`docs/workflows/`](docs/workflows/) · guide: [`examples/09-workflow-graph/README.md`](examples/09-workflow-graph/README.md).
+Crate: [`crates/workflow_graph`](crates/workflow_graph) · HTTP: [`examples/09-workflow-graph`](examples/09-workflow-graph) · Flutter: `workflow_graph_ui/` · snapshots: [`docs/workflows/`](docs/workflows/).
 
 ## Clone & build
 
