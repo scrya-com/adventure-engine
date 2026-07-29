@@ -38,7 +38,7 @@ Repository directory name remains `adventure-engine` (crate paths) until a full 
 Playable SCUMM-style chrome on a full cellblock still: status strip, **LOOK / TALK / USE**, **NEXT DAY**, face-cropped hub portraits, door-aligned hotspots.
 
 <p align="center">
-  <img src="docs/assets/readme/shawshank-pac.jpg" alt="Shawshank PAC — Cell Block C (example-08) with LOOK/TALK/USE chrome and hub portraits" width="100%"/>
+  <img src="docs/assets/readme/shawshank-pac.jpg" alt="Shawshank PAC — Cell Block C (example-08): cellblock still, hub portraits, LOOK/TALK/USE bar, and Red dialog choices" width="100%"/>
 </p>
 
 ```bash

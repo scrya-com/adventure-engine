@@ -4,7 +4,7 @@ Playable chrome: **status strip**, **LOOK / TALK / USE** verb bar, **NEXT DAY**,
 face-cropped hub portraits, door-aligned hotspots, dialog text.
 
 <p align="center">
-  <img src="../../docs/assets/readme/shawshank-pac.jpg" alt="Shawshank PAC — Cell Block C with LOOK/TALK/USE chrome" width="100%"/>
+  <img src="../../docs/assets/readme/shawshank-pac.jpg" alt="Shawshank PAC — Cell Block C: hub portraits, verb bar, Red dialog choices" width="100%"/>
 </p>
 
 ```bash
