@@ -1,0 +1,17 @@
+[package]
+name = "adventure-workflow-graph"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Static interpreter + layout for Grok Build Rhai workflows (meta / phase / agent / parallel)"
+publish.workspace = true
+
+[dependencies]
+adventure-core.workspace = true
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[lints.rust]
+unexpected_cfgs = { level = "allow" }
