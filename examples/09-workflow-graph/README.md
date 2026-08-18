@@ -35,6 +35,8 @@ cargo run -p example-09-workflow-graph -- --serve --port 8791
 | POST | `/v1/parse` (body = source) |
 | GET | `/v1/layout?path=…` |
 | GET | `/v1/mermaid?path=…` |
+| GET | `/v1/runs` | Grok + Claude + shell pipeline (`STATUS.json`) |
+| GET | `/v1/logs?source=rsrt_overnight&n=200` | Allowlisted log tail |
 
 CORS `*` for local Flutter web.
 

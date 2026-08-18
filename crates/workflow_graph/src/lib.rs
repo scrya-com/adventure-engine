@@ -34,6 +34,28 @@ pub enum WorkflowGraphError {
     /// meta.name missing.
     #[error("meta.name missing")]
     MissingName,
+    /// JSON manifest failed to parse (used by [`parse_workflow_manifest`]).
+    #[error("manifest json: {0}")]
+    ManifestJson(#[from] serde_json::Error),
+    /// Manifest was well-formed JSON but missing a required field.
+    #[error("manifest field missing: {0}")]
+    ManifestField(&'static str),
+}
+
+/// Which orchestrator authored / runs the workflow.
+///
+/// Grok workflows are `.rhai` scripts under `.grok/workflows/`; Claude workflows
+/// are JSON manifests under `.claude/workflows/` produced by (or shipped with)
+/// the Claude Agent SDK / slash-command ports. Both flatten to the same
+/// [`WorkflowGraph`] so the UI renders them identically.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum Backend {
+    /// `.rhai` workflow parsed from source (default — preserves prior behavior).
+    #[default]
+    Grok,
+    /// `.claude/workflows/*.json` manifest.
+    Claude,
 }
 
 /// Kind of graph node.
@@ -102,6 +124,9 @@ pub struct WorkflowGraph {
     pub description: String,
     /// Optional `meta.when_to_use`.
     pub when_to_use: Option<String>,
+    /// Which orchestrator this workflow belongs to.
+    #[serde(default)]
+    pub backend: Backend,
     /// Declared phases (meta order, then any extra phase() calls).
     pub phases: Vec<PhaseInfo>,
     /// Nodes in roughly source order.
@@ -359,6 +384,199 @@ pub fn parse_workflow(src: &str) -> Result<WorkflowGraph, WorkflowGraphError> {
         name,
         description,
         when_to_use,
+        backend: Backend::Grok,
+        phases,
+        nodes,
+        edges,
+        source_path: None,
+        stats,
+    })
+}
+
+/// Load and parse a `.claude/workflows/*.json` manifest.
+///
+/// See [`parse_workflow_manifest`] for the schema and how each manifest phase
+/// unfolds into the shared [`WorkflowGraph`].
+pub fn parse_workflow_manifest_file(
+    path: impl AsRef<Path>,
+) -> Result<WorkflowGraph, WorkflowGraphError> {
+    let path = path.as_ref();
+    let src = std::fs::read_to_string(path)?;
+    let mut g = parse_workflow_manifest(&src)?;
+    g.source_path = Some(path.display().to_string());
+    Ok(g)
+}
+
+/// Parse a Claude workflow JSON manifest into a [`WorkflowGraph`].
+///
+/// Expected shape (v1 — see `scroll-world/.claude/workflows/*.json`):
+///
+/// ```json
+/// {
+///   "backend": "claude",
+///   "name": "scroll-world",
+///   "description": "…",
+///   "when_to_use": "…",
+///   "phases": [
+///     {
+///       "title": "Bootstrap",
+///       "detail": "CLI tools + balances",
+///       "agents": [{"label": "bootstrap", "capability_mode": "execute"}],
+///       "gates":  [{"kind": "infra", "when": "on_failure", "message": "…"}]
+///     }
+///   ]
+/// }
+/// ```
+///
+/// The parser walks each phase in declared order emitting a phase node, then
+/// one `Agent` node per `agents[]` entry, then one `Gate` node per `gates[]`
+/// entry. Every phase also seeds a [`PhaseInfo`] so the rail matches the DAG.
+pub fn parse_workflow_manifest(src: &str) -> Result<WorkflowGraph, WorkflowGraphError> {
+    let v: serde_json::Value = serde_json::from_str(src)?;
+    let obj = v.as_object().ok_or(WorkflowGraphError::ManifestField("root"))?;
+
+    let name = obj
+        .get("name")
+        .and_then(|x| x.as_str())
+        .ok_or(WorkflowGraphError::ManifestField("name"))?
+        .to_string();
+    let description = obj
+        .get("description")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .to_string();
+    let when_to_use = obj
+        .get("when_to_use")
+        .and_then(|x| x.as_str())
+        .map(|s| s.to_string());
+
+    let mut phases: Vec<PhaseInfo> = Vec::new();
+    let mut nodes: Vec<GraphNode> = Vec::new();
+    let mut edges: Vec<GraphEdge> = Vec::new();
+    let mut stats = WorkflowStats::default();
+
+    nodes.push(GraphNode {
+        id: "start".into(),
+        label: name.clone(),
+        kind: NodeKind::Start,
+        phase: None,
+        line: None,
+        detail: Some(truncate(&description, 80)),
+    });
+    let mut prev = "start".to_string();
+    let mut phase_idx = 0usize;
+    let mut agent_idx = 0usize;
+    let mut gate_idx = 0usize;
+
+    if let Some(pl) = obj.get("phases").and_then(|x| x.as_array()) {
+        for p in pl {
+            let title = p
+                .get("title")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string();
+            if title.is_empty() {
+                continue;
+            }
+            let detail = p
+                .get("detail")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string());
+            phases.push(PhaseInfo {
+                title: title.clone(),
+                detail: detail.clone(),
+            });
+            stats.phase_calls += 1;
+            let pid = format!("phase_{phase_idx}");
+            phase_idx += 1;
+            nodes.push(GraphNode {
+                id: pid.clone(),
+                label: title.clone(),
+                kind: NodeKind::Phase,
+                phase: Some(title.clone()),
+                line: None,
+                detail,
+            });
+            edges.push(GraphEdge {
+                from: prev.clone(),
+                to: pid.clone(),
+                label: None,
+            });
+            prev = pid;
+
+            if let Some(agents) = p.get("agents").and_then(|x| x.as_array()) {
+                for a in agents {
+                    stats.agent_calls += 1;
+                    let label = a
+                        .get("label")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("agent")
+                        .to_string();
+                    let cap = a
+                        .get("capability_mode")
+                        .and_then(|x| x.as_str())
+                        .map(|s| s.to_string());
+                    let id = format!("agent_{agent_idx}");
+                    agent_idx += 1;
+                    nodes.push(GraphNode {
+                        id: id.clone(),
+                        label,
+                        kind: NodeKind::Agent,
+                        phase: Some(title.clone()),
+                        line: None,
+                        detail: cap,
+                    });
+                    edges.push(GraphEdge {
+                        from: prev.clone(),
+                        to: id.clone(),
+                        label: None,
+                    });
+                    prev = id;
+                }
+            }
+
+            if let Some(gates) = p.get("gates").and_then(|x| x.as_array()) {
+                for g in gates {
+                    stats.gate_calls += 1;
+                    let kind_name = g
+                        .get("kind")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("gate")
+                        .to_string();
+                    let msg = g
+                        .get("message")
+                        .and_then(|x| x.as_str())
+                        .map(|s| s.to_string());
+                    let id = format!("gate_{gate_idx}");
+                    gate_idx += 1;
+                    nodes.push(GraphNode {
+                        id: id.clone(),
+                        label: kind_name.clone(),
+                        kind: NodeKind::Gate,
+                        phase: Some(title.clone()),
+                        line: None,
+                        detail: msg,
+                    });
+                    // A gate that only fires on failure is still on the rail
+                    // — the UI can dim it if the run bypassed it. `when` is
+                    // reserved for that logic; not part of the DAG shape.
+                    let _ = g.get("when");
+                    edges.push(GraphEdge {
+                        from: prev.clone(),
+                        to: id.clone(),
+                        label: Some("gate".into()),
+                    });
+                    prev = id;
+                }
+            }
+        }
+    }
+
+    Ok(WorkflowGraph {
+        name,
+        description,
+        when_to_use,
+        backend: Backend::Claude,
         phases,
         nodes,
         edges,
@@ -895,6 +1113,41 @@ if r.success { complete(r.output); }
         assert!(lay.width > 100.0);
         assert!(lay.height > 40.0);
         assert_eq!(lay.nodes.len(), g.nodes.len());
+    }
+
+    const CLAUDE_MANIFEST: &str = r#"
+    {
+      "backend": "claude",
+      "name": "scroll-world",
+      "description": "test build",
+      "when_to_use": "when",
+      "phases": [
+        {"title": "Bootstrap", "detail": "cli",
+         "agents": [{"label": "bootstrap", "capability_mode": "execute"}],
+         "gates":  [{"kind": "infra", "when": "on_failure", "message": "install cli"}]},
+        {"title": "Approve",
+         "gates":  [{"kind": "user", "when": "always_unless_auto_approve", "message": "approve?"}]}
+      ]
+    }
+    "#;
+
+    #[test]
+    fn parses_claude_manifest() {
+        let g = parse_workflow_manifest(CLAUDE_MANIFEST).expect("parse manifest");
+        assert_eq!(g.backend, Backend::Claude);
+        assert_eq!(g.name, "scroll-world");
+        assert_eq!(g.phases.len(), 2);
+        assert!(g.stats.agent_calls >= 1);
+        assert!(g.stats.gate_calls >= 2);
+        assert!(g.nodes.iter().any(|n| n.kind == NodeKind::Phase));
+        assert!(g.nodes.iter().any(|n| n.kind == NodeKind::Agent));
+        assert!(g.nodes.iter().any(|n| n.kind == NodeKind::Gate));
+    }
+
+    #[test]
+    fn backend_default_is_grok() {
+        let g = parse_workflow(SAMPLE).unwrap();
+        assert_eq!(g.backend, Backend::Grok);
     }
 
     #[test]

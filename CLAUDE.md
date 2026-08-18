@@ -1,42 +1,67 @@
-# adventure-engine — Claude Guide
+# CLAUDE.md
 
-This is a Rust workspace for a point-and-click adventure engine. See `AGENTS.md` for general guidance.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Claude-specific notes
+This is a Rust workspace for **Ariadne** (product name; repo/crate paths still say `adventure-engine`), a native point-and-click adventure game engine — wgpu + bevy_ecs (world only) + Rhai + RON. See `AGENTS.md` for the agent-oriented layout summary.
 
-- **Read `docs/DESIGN.md` first** — it's the synthesis of the UE 5.8 analysis that informed every architectural choice. Questions about "why X" are answered there.
-- **Read `docs/DECISIONS/*.md`** before proposing changes to the foundation. Each ADR explains why a choice was made; the *why* matters for edge cases.
-- **`crates/locomotion/` is forked code** — preserve its test invariants. The SE→NW moonwalk regression test (`plant.rs`) is load-bearing.
-- **`crates/graph/` is vendored** — keep it byte-equivalent to upstream unless we've explicitly decided to diverge.
-- **RON is the data format**, not JSON or YAML. Use the `ron` crate.
-- **Rhai is the scripting language**, not Lua. Scripts are evaluated via `crates/scripting/`.
-- **No global state.** Use dependency injection through `engine::App` resources.
-- **No unsafe** outside of `crates/render2d/` (which is wgpu-bound and may need small unsafe blocks for FFI).
+## Commands
 
-## When asked to add a feature
+```bash
+cargo build --workspace                 # build everything
+cargo test --workspace                  # run all tests
+cargo test -p adventure-locomotion      # test one crate (crate names are adventure-*, dirs are crates/*)
+cargo test -p adventure-locomotion plant::tests::moonwalk_regression_hold_until_route_settled  # single test
+cargo run -p example-08-shawshank-pac   # run an example (see examples/ for the numbered set)
+cargo doc --workspace --no-deps --open
+cargo clippy --workspace
+```
 
-1. Check `docs/ROADMAP.md` to see which phase the feature belongs to.
-2. Read the relevant design doc (`docs/RENDERING.md`, `docs/SCRIPTING.md`, etc.).
-3. If the change affects the foundation (data format, crate boundary, scripting story), write an ADR in `docs/DECISIONS/`.
-4. Implement behind the appropriate crate. Don't add new crates without an ADR.
-5. Add or update tests inline (`#[cfg(test)] mod tests`).
-6. Run `cargo test --workspace` and `cargo build --workspace` before reporting done.
+There is no CI config and no root rustfmt/clippy.toml — `rust-toolchain.toml` pins `stable` with `rustfmt` + `clippy` components.
 
-## When asked to fix a bug
+Workspace crate names are `adventure-<dir>` (e.g. `crates/locomotion` → `adventure-locomotion`), except `crates/workflow_graph` → `adventure-workflow-graph`. Examples are `example-NN-<name>` matching their `examples/` directory.
 
-1. Reproduce with a test first.
-2. Find root cause — don't paper over with `unwrap()` or `panic!()`.
-3. The fix should be small and targeted. No drive-by refactors.
+## Architecture
 
-## What NOT to do
+16 library crates + `workflow_graph` (17), layered strictly bottom-up (see `docs/ARCHITECTURE.md` for the full diagram) — a crate only depends on layers below it:
 
-- Don't add Lua, Python, or a custom bytecode VM.
-- Don't add a HTTP server. AVAL stays separate; FastApi lives in `PresidentialDilema-FastApi`.
-- Don't introduce Bevy's umbrella crate. We use `bevy_ecs` directly, not `bevy`.
-- Don't add new core dependencies without an ADR justifying them.
-- Don't remove `#![deny(missing_docs)]`.
-- Don't modify `Cargo.lock` by hand — let cargo update it.
+1. **Foundation** (no internal deps): `core` (AssetId, Error, glam re-exports, string interning), `graph` (vendored `aval_graph`, ring-arc route planning, zero deps)
+2. **Locomotion**: `locomotion` (forked `scene-engine` — walk graphs, plant FSM, retargeting), depends only on `core` + `graph`
+3. **Domain types**: `scene`, `state`, `inventory`, `dialogue` (+ `scripting`), `save`, `assets`, `localization`
+4. **I/O**: `render2d` (wgpu + Slate-style batcher), `audio` (kira 4-bus), `input` (winit → `InputEvent`), `ui`, `cutscene`
+5. **Engine**: `engine` — owns the `bevy_ecs` `World`, defines `Resource`s (e.g. `SceneGraph`, `PendingClick`), schedules systems (`click_to_walk_system`, `walker_tick_system`) via `FrameSchedule`/`run_frame`. There is no `App` struct — engine state lives as ECS resources on `World`, and callers drive the frame loop themselves.
+6. **Tools**: `examples/*` (one vertical slice per phase), `tools/` (packer, RON inspector — phase 9, not yet built)
 
-## Commit cadence
+`crates/workflow_graph` is a separate, mostly-standalone concern (see below) — it doesn't sit in the engine dependency chain.
 
-User explicitly asked to "commit regularly." Each phase produces multiple commits. See `docs/ROADMAP.md` for the commit map.
+Per-frame data flow (winit → input::dispatch → engine systems → render2d/audio → present) and the asset resolution / save-load flows are diagrammed in full in `docs/ARCHITECTURE.md` — read it before touching frame ordering or the asset cache.
+
+### Data & scripting
+
+- **RON** for all authored data (scenes, dialog trees, items, manifests) — hot-reloadable, human-edited. Saves are versioned serde (see `docs/SAVE.md`, `docs/DATA-FORMATS.md`).
+- **Rhai** is the only scripting language (dialog conditions, side effects, inventory combine rules) — sandboxed, no GC. See `docs/SCRIPTING.md`.
+- Refs: `Arc<T>` (hard), `AssetId` (soft, path-only), `Weak<T>` (LRU-evictable).
+
+### workflow_graph (crates/workflow_graph, examples/09)
+
+A separate tool that *statically parses* (not executes) Grok Build `.rhai` workflow files into a `WorkflowGraph` struct, emitting Mermaid or JSON, or serving both plus a small HTTP API over that data for a sibling Flutter UI (`../PresidentialDilema-FastApi/workflow_graph_ui/`). Rust parses; Flutter renders. Entry point: `parse_workflow_file()`; HTTP routes documented in `examples/09-workflow-graph/README.md`.
+
+### Forked / vendored code — do not casually modify
+
+- `crates/locomotion/` is **forked** from `scene-engine` (`~/Documents/GitHub/PresidentialDilema-FastApi/scene-engine`, MIT). It encodes non-obvious invariants — most importantly the SE→NW moonwalk regression (`crates/locomotion/src/plant.rs`, test `moonwalk_regression_hold_until_route_settled`) and gait/ring-arc locks. Don't change locomotion/route math without confirming these tests still pass.
+- `crates/graph/` is **vendored** from `aval_graph` (`~/Documents/GitHub/aval/flutter/rust/aval_graph`, MIT OR Apache-2.0). Keep it byte-equivalent to upstream unless explicitly deciding to diverge (write an ADR).
+
+## Conventions
+
+- `#![deny(missing_docs)]` on every library crate — every `pub` item needs a doc comment.
+- Tests are inline `#[cfg(test)] mod tests` per file, not a top-level `tests/` dir (matches the forked scene-engine pattern).
+- UE 5.8 reference paths in comments use the form `UE: SlateCore/Rendering/ElementBatcher.h:245` — the design deliberately borrows UE 5.8 abstraction *patterns* (Slate batcher, gameplay tags, streaming assets, versioned saves), not code; full mapping in `docs/DESIGN.md`.
+- No `unsafe` outside `crates/render2d/` (wgpu FFI only).
+- Never hand-edit `Cargo.lock` — let cargo manage it.
+- Each roadmap phase (`docs/ROADMAP.md`) maps to one or more commits; phases 0–7 are done, 8 (cutscenes/i18n) and 9 (editor tooling) are pending.
+
+## When making changes
+
+- **New feature**: check `docs/ROADMAP.md` for its phase, read the relevant subsystem doc (`docs/RENDERING.md`, `docs/SCRIPTING.md`, `docs/AUDIO.md`, `docs/SAVE.md`), and if it touches the foundation (data format, crate boundary, scripting story) write an ADR in `docs/DECISIONS/` first (see `0001`–`0007` for the format/precedent).
+- **Bug fix**: reproduce with a test first; find root cause rather than papering over with `unwrap()`/`panic!()`; keep the fix small and targeted.
+- Don't add new crates without an ADR, don't add core dependencies without an ADR.
+- Explicitly out of scope: Lua/Python/custom bytecode VM, an HTTP server for the engine itself (workflow_graph's HTTP API is the one sanctioned exception, for the Flutter sidecar), the umbrella `bevy` crate (only `bevy_ecs` is used).
