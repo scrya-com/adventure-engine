@@ -199,6 +199,18 @@ pub struct SaveBody {
     /// Bus volumes at save time.
     #[serde(default)]
     pub bus_volumes: BusVolumes,
+    /// Story-runner IP (one past the current blocking instruction).
+    #[serde(default)]
+    pub story_ip: Option<u32>,
+    /// Story-runner Call/Return stack.
+    #[serde(default)]
+    pub story_call_stack: Vec<u32>,
+    /// Last Scene / movie resolver key (`bgn1`, `anima1`, …).
+    #[serde(default)]
+    pub story_bg: Option<String>,
+    /// Last music asset name (`spark.mp3`).
+    #[serde(default)]
+    pub story_music: Option<String>,
 }
 
 // ── Errors ───────────────────────────────────────────────────────────────
@@ -625,6 +637,7 @@ mod tests {
                 sfx: 1.0,
                 voice: 0.9,
             },
+            ..Default::default()
         }
     }
 

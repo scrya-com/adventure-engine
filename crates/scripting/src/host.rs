@@ -102,6 +102,21 @@ impl ScriptHost {
         engine.register_fn("set_int", move |k: &str, v: i64| {
             vars_for_int.lock().unwrap().set(k, VarValue::I(v));
         });
+        // Porter/type-mismatch fallbacks: unset flags are bools in scope.
+        let vars_for_int_b = vars.clone();
+        engine.register_fn("set_int", move |k: &str, v: bool| {
+            vars_for_int_b
+                .lock()
+                .unwrap()
+                .set(k, VarValue::I(if v { 1 } else { 0 }));
+        });
+        let vars_for_int_f = vars.clone();
+        engine.register_fn("set_int", move |k: &str, v: f64| {
+            vars_for_int_f
+                .lock()
+                .unwrap()
+                .set(k, VarValue::I(v as i64));
+        });
         let vars_for_float = vars.clone();
         engine.register_fn("set_float", move |k: &str, v: f64| {
             vars_for_float.lock().unwrap().set(k, VarValue::F(v));
@@ -341,6 +356,24 @@ mod tests {
         host.run(r#"remove_tag("State.NPC.Bob.Met")"#, &mut v, &mut t)
             .unwrap();
         assert!(!t.has(&Tag::new("State.NPC.Bob.Met").unwrap()));
+    }
+
+    #[test]
+    fn run_set_int_coerces_bool() {
+        let host = ScriptHost::new();
+        let mut v = VarTable::new();
+        v.set("pers_ch2_cheating", VarValue::B(false));
+        let mut t = Tags::new();
+        host.run(
+            r#"set_int("cheating", pers_ch2_cheating)"#,
+            &mut v,
+            &mut t,
+        )
+        .unwrap();
+        match v.get("cheating") {
+            Some(VarValue::I(0)) => {}
+            other => panic!("expected I(0), got {other:?}"),
+        }
     }
 
     #[test]

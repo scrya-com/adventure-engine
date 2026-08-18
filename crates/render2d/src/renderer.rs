@@ -34,6 +34,22 @@ pub enum RendererError {
     /// Could not get a current surface texture (window closed, etc.).
     #[error("no current frame target")]
     NoSurfaceTexture,
+    /// Image file failed to decode.
+    #[error("image: {0}")]
+    Image(String),
+    /// Texture id is not in the table.
+    #[error("unknown texture {0:?}")]
+    UnknownTexture(TextureId),
+    /// RGBA payload does not match the texture byte size.
+    #[error("texture {id:?} size mismatch: expected {expected} bytes, got {got}")]
+    TextureSize {
+        /// Texture that was written.
+        id: TextureId,
+        /// Expected RGBA byte count.
+        expected: usize,
+        /// Payload length.
+        got: usize,
+    },
 }
 
 /// Per-frame uniform passed at bind group 0 of every shader.
@@ -92,8 +108,12 @@ pub const TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormS
 /// One entry in the texture table.
 pub(crate) struct TextureEntry {
     #[allow(dead_code)]
+    texture: wgpu::Texture,
+    #[allow(dead_code)]
     view: wgpu::TextureView,
     bind: wgpu::BindGroup,
+    width: u32,
+    height: u32,
 }
 
 /// The wgpu renderer.
@@ -239,34 +259,36 @@ impl WgpuRenderer {
                 label: Some(&format!("render2d {kind:?} shader")),
                 source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(kind.wgsl())),
             });
-            p[i] = Some(device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(&format!("render2d {kind:?} pipeline")),
-                layout: Some(&pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &module,
-                    entry_point: "vs_main",
-                    buffers: &[GpuVertex::layout()],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &module,
-                    entry_point: "fs_main",
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: SURFACE_FORMAT,
-                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+            p[i] = Some(
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some(&format!("render2d {kind:?} pipeline")),
+                    layout: Some(&pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &module,
+                        entry_point: "vs_main",
+                        buffers: &[GpuVertex::layout()],
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    },
+                    fragment: Some(wgpu::FragmentState {
+                        module: &module,
+                        entry_point: "fs_main",
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: SURFACE_FORMAT,
+                            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    }),
+                    primitive: wgpu::PrimitiveState {
+                        topology: wgpu::PrimitiveTopology::TriangleList,
+                        ..Default::default()
+                    },
+                    depth_stencil: None,
+                    multisample: wgpu::MultisampleState::default(),
+                    multiview: None,
+                    cache: None,
                 }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    ..Default::default()
-                },
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
-                multiview: None,
-                cache: None,
-            }));
+            );
         }
 
         Ok(Self {
@@ -356,17 +378,65 @@ impl WgpuRenderer {
                 },
             ],
         });
+        let entry = TextureEntry {
+            texture: tex,
+            view,
+            bind,
+            width,
+            height,
+        };
         if self.textures.is_empty() {
             self.textures.push(None);
         }
         for (i, slot) in self.textures.iter_mut().enumerate() {
             if slot.is_none() && i != 0 {
-                *slot = Some(TextureEntry { view, bind });
+                *slot = Some(entry);
                 return Ok(TextureId(i as u32));
             }
         }
-        self.textures.push(Some(TextureEntry { view, bind }));
+        self.textures.push(Some(entry));
         Ok(TextureId((self.textures.len() - 1) as u32))
+    }
+
+    /// Decode an image file (png/jpeg/webp) and upload it.
+    pub fn upload_image_path(
+        &mut self,
+        path: &std::path::Path,
+    ) -> Result<TextureId, RendererError> {
+        let img = image::open(path).map_err(|e| RendererError::Image(e.to_string()))?;
+        let rgba = img.to_rgba8();
+        self.upload_texture(rgba.width(), rgba.height(), &rgba)
+    }
+
+    /// Pixel size of an uploaded texture.
+    pub fn texture_size(&self, id: TextureId) -> Option<(u32, u32)> {
+        self.textures
+            .get(id.0 as usize)
+            .and_then(|s| s.as_ref())
+            .map(|e| (e.width, e.height))
+    }
+
+    /// Overwrite an existing texture with tightly packed RGBA8 (`width * height * 4`).
+    ///
+    /// Used by looping Movie() playback to upload the next decoded frame.
+    pub fn update_texture(&self, id: TextureId, rgba: &[u8]) -> Result<(), RendererError> {
+        let entry = self
+            .textures
+            .get(id.0 as usize)
+            .and_then(|s| s.as_ref())
+            .ok_or(RendererError::UnknownTexture(id))?;
+        let expected = (entry.width as usize)
+            .saturating_mul(entry.height as usize)
+            .saturating_mul(4);
+        if rgba.len() != expected {
+            return Err(RendererError::TextureSize {
+                id,
+                expected,
+                got: rgba.len(),
+            });
+        }
+        write_rgba(&self.queue, &entry.texture, entry.width, entry.height, rgba);
+        Ok(())
     }
 
     fn make_white_texel(device: &wgpu::Device) -> wgpu::TextureView {
@@ -404,9 +474,7 @@ impl WgpuRenderer {
     }
 
     /// Build vertices for a list of batches (used by tests + the frame).
-    pub(crate) fn build_vertices(
-        batches: &[crate::batcher::Batch],
-    ) -> Vec<GpuVertex> {
+    pub(crate) fn build_vertices(batches: &[crate::batcher::Batch]) -> Vec<GpuVertex> {
         let mut out = Vec::new();
         for b in batches {
             for ((p, uv), t) in b.positions.iter().zip(b.uvs.iter()).zip(&b.tints) {
@@ -469,11 +537,11 @@ impl WgpuRenderer {
 
         // Build vertex buffer for the whole frame.
         let verts = Self::build_vertices(batches);
-        let mut encoder =
-            self.device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("render2d frame encoder"),
-                });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("render2d frame encoder"),
+            });
 
         if verts.is_empty() {
             // Just clear — no geometry.
@@ -538,6 +606,40 @@ impl WgpuRenderer {
         frame.present();
         Ok(())
     }
+}
+
+/// Upload tightly packed RGBA8, padding rows to wgpu's copy alignment.
+fn write_rgba(queue: &wgpu::Queue, texture: &wgpu::Texture, width: u32, height: u32, rgba: &[u8]) {
+    let unpadded = width * 4;
+    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+    let padded = unpadded.div_ceil(align) * align;
+    let size = wgpu::Extent3d {
+        width,
+        height,
+        depth_or_array_layers: 1,
+    };
+    let layout = wgpu::ImageDataLayout {
+        offset: 0,
+        bytes_per_row: Some(padded),
+        rows_per_image: Some(height),
+    };
+    let dest = wgpu::ImageCopyTexture {
+        texture,
+        mip_level: 0,
+        origin: wgpu::Origin3d::ZERO,
+        aspect: wgpu::TextureAspect::All,
+    };
+    if padded == unpadded {
+        queue.write_texture(dest, rgba, layout, size);
+        return;
+    }
+    let mut buf = vec![0u8; (padded * height) as usize];
+    for y in 0..height {
+        let src = (y * unpadded) as usize;
+        let dst = (y * padded) as usize;
+        buf[dst..dst + unpadded as usize].copy_from_slice(&rgba[src..src + unpadded as usize]);
+    }
+    queue.write_texture(dest, &buf, layout, size);
 }
 
 #[cfg(test)]

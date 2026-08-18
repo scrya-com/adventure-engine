@@ -1,0 +1,17 @@
+[package]
+name = "adventure-movie"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Looping Ren'Py Movie() playback: ffmpeg decode → wgpu texture"
+
+[dependencies]
+adventure-core.workspace = true
+adventure-assets.workspace = true
+adventure-render2d.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+pollster.workspace = true

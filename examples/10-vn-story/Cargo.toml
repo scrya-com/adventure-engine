@@ -1,0 +1,17 @@
+[package]
+name = "example-10-vn-story"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Headless VN story demo - StoryRunner over .story.ron (Phase 8B.1)"
+publish.workspace = true
+
+[[bin]]
+name = "example-10-vn-story"
+path = "src/main.rs"
+
+[dependencies]
+adventure-scenario = { path = "../../crates/scenario" }
+adventure-scripting = { path = "../../crates/scripting" }
+adventure-state = { path = "../../crates/state" }
