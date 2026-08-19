@@ -105,7 +105,7 @@ impl StoryPosition {
     }
 }
 
-/// One visible menu choice (already filtered by condition).
+/// One menu choice (locked rows stay visible so the player can see the gate).
 #[derive(Clone, Debug, PartialEq)]
 pub struct VisibleChoice {
     /// Index into the authored `MenuSpec::choices` list — pass this back to
@@ -113,6 +113,38 @@ pub struct VisibleChoice {
     pub source_index: usize,
     /// Player-facing choice text.
     pub text: String,
+    /// True when the Rhai condition failed (fail-closed).
+    pub locked: bool,
+    /// Raw condition text (`desire >= 4`) when locked.
+    pub lock_reason: Option<String>,
+}
+
+fn collect_menu_choices(
+    spec: &MenuSpec,
+    host: &ScriptHost,
+    vars: &VarTable,
+    tags: &Tags,
+) -> Vec<VisibleChoice> {
+    spec.choices
+        .iter()
+        .enumerate()
+        .map(|(i, c)| {
+            let open = match c.condition.as_deref() {
+                Some(expr) => host.eval_condition(expr, vars, tags).unwrap_or(false),
+                None => true,
+            };
+            VisibleChoice {
+                source_index: i,
+                text: c.text.to_string(),
+                locked: !open,
+                lock_reason: if open {
+                    None
+                } else {
+                    c.condition.clone()
+                },
+            }
+        })
+        .collect()
 }
 
 /// The blocking point a [`StoryRunner`] stopped at.
@@ -274,21 +306,7 @@ impl StoryRunner {
             }
             Ir::Menu(spec) => {
                 let prompt = spec.prompt.as_deref().map(str::to_string);
-                let choices = spec
-                    .choices
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(i, c)| {
-                        let visible = match c.condition.as_deref() {
-                            Some(expr) => host.eval_condition(expr, vars, tags).unwrap_or(false),
-                            None => true,
-                        };
-                        visible.then(|| VisibleChoice {
-                            source_index: i,
-                            text: c.text.to_string(),
-                        })
-                    })
-                    .collect();
+                let choices = collect_menu_choices(spec, host, vars, tags);
                 self.blocked = Some(Blocked::Menu(spec.clone()));
                 Ok(StepResult::Menu { prompt, choices })
             }
@@ -543,23 +561,7 @@ impl StoryRunner {
                 }
                 Ir::Menu(spec) => {
                     let prompt = spec.prompt.as_deref().map(str::to_string);
-                    let choices = spec
-                        .choices
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(i, c)| {
-                            let visible = match c.condition.as_deref() {
-                                Some(expr) => {
-                                    host.eval_condition(expr, vars, tags).unwrap_or(false)
-                                }
-                                None => true,
-                            };
-                            visible.then(|| VisibleChoice {
-                                source_index: i,
-                                text: c.text.to_string(),
-                            })
-                        })
-                        .collect();
+                    let choices = collect_menu_choices(spec, host, vars, tags);
                     let step = StepResult::Menu { prompt, choices };
                     self.position.as_mut().expect("position checked above").ip += 1;
                     self.blocked = Some(Blocked::Menu(spec.clone()));
@@ -800,8 +802,9 @@ mod tests {
                         .unwrap();
                 }
                 StepResult::Menu { choices, .. } => {
-                    assert_eq!(choices.len(), 3, "Locked should be hidden");
-                    assert_eq!(choices[2].text, "Secret");
+                    assert_eq!(choices.len(), 4, "locked rows stay listed");
+                    assert!(!choices[2].locked && choices[2].text == "Secret");
+                    assert!(choices[3].locked && choices[3].text == "Locked");
                     step = runner
                         .choose(0, &ctx.host, &mut ctx.vars, &mut ctx.tags)
                         .unwrap();

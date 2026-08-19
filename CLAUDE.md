@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This is a Rust workspace for **Ariadne** (product name; repo/crate paths still say `adventure-engine`), a native point-and-click adventure game engine — wgpu + bevy_ecs (world only) + Rhai + RON. See `AGENTS.md` for the agent-oriented layout summary.
+This is a Rust workspace for **Ariadne** (product name; repo/crate paths still say `adventure-engine`), a native point-and-click adventure game engine — wgpu + bevy_ecs (world only) + Rhai + RON. See `AGENTS.md` for the agent-oriented layout summary **and the CodeGraphContext workflow** (callers/callees before repo-wide grep).
 
 ## Commands
 

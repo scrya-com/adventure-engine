@@ -6,8 +6,51 @@ A native Rust point-and-click adventure engine. Inspired by Unreal Engine 5.8 ar
 
 - **Build:** `cargo build --workspace`
 - **Test:** `cargo test --workspace`
-- **Run examples:** `cargo run --example <name>` (see `examples/` dir for current set)
+- **Run examples:** `cargo run -p example-08-shawshank-pac` (numbered `examples/`)
 - **Docs:** `cargo doc --workspace --no-deps --open`
+
+## Code graph first (CodeGraphContext)
+
+This workspace is indexed in a local CodeGraphContext graph (FalkorDB Lite). **Use the graph before grepping the whole tree** for symbols, callers, callees, impact, dead code, or crate coupling.
+
+Both this repo and the sibling VN host `../romp` are in the same graph (`cgc list`).
+
+### When MCP `codegraphcontext` is connected
+
+Discover tools with the MCP search, then call them. Grok names look like `codegraphcontext__<tool>`.
+
+| Question | Tool | Args |
+|---|---|---|
+| Where is `Foo`? | `find_code` | `query: "Foo"`, optional `repo_path` |
+| Who calls `advance`? | `analyze_code_relationships` | `query_type: "find_callers"`, `target: "advance"` |
+| What does it call? | `analyze_code_relationships` | `query_type: "find_callees"` |
+| Direct + indirect | `analyze_code_relationships` | `query_type: "find_all_callers"` or `find_all_callees`, `depth` 1–20 |
+| Path A → B | `analyze_code_relationships` | `query_type: "call_chain"`, `target: "start_fn->end_fn"` |
+| Unused fns | `analyze_code_relationships` | `query_type: "dead_code"` |
+| Crate imports | `analyze_code_relationships` | `query_type: "module_deps"` |
+| Custom graph walk | `execute_cypher_query` | read-only Cypher |
+| Stale index? | `list_indexed_repositories` then `add_code_to_graph` | `repo_path` = this root; poll `check_job_status` |
+
+Scope with `repo_path` (`…/adventure-engine` vs `…/romp`) so results do not mix hosts.
+
+Do **not** use the graph for string literals, comments, RON/Rhai contents, or “show me this file”. Those stay `grep` / `read_file`.
+
+### CLI fallback (no MCP)
+
+```bash
+cgc list
+cgc find name StoryRunner
+cgc analyze callers advance
+cgc analyze calls advance
+cgc analyze chain boot_at advance
+cgc analyze dead-code
+cgc query 'MATCH (f:Function {name:"advance"}) RETURN f.path LIMIT 10'
+cgc index .          # after large structural edits; --force to rebuild
+```
+
+`.cgcignore` already skips `target/` and media. After renaming a public symbol or adding a crate, re-index (or `watch_directory`) before trusting caller lists.
+
+Install notes and human setup: `README.md` § Code graph.
 
 ## Layout
 
@@ -27,6 +70,9 @@ crates/
   input/        # winit events → Interactive dispatch
   ui/           # immediate-mode menus/dialog + retained HUD
   scripting/    # Rhai wrapper
+  scenario/     # VN Story/Stmt/StoryRunner (RON → IR)
+  movie/        # ffmpeg-pipe VP9 → wgpu frames
+  workflow_graph/ # parse Grok .rhai workflows (not the game loop)
   cutscene/     # timeline/sequencer
   localization/ # fluent-rs
   engine/       # main loop, owns World + systems

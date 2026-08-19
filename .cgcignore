@@ -1,0 +1,20 @@
+# Build + generated
+/target/
+**/target/
+/target/**
+
+# Binary / media (not code)
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.webm
+*.mp3
+*.wav
+*.ogg
+*.gif
+*.svg
+
+# Local tool caches
+.grok/
+.worktrees/

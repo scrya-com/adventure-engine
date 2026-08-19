@@ -72,6 +72,19 @@ cargo test --workspace
 cargo run -p example-08-shawshank-pac
 ```
 
+## Code graph (CodeGraphContext)
+
+Agents: follow **[AGENTS.md](AGENTS.md) § Code graph first** — query callers/callees via MCP or `cgc` before grepping the workspace.
+
+```bash
+pip install codegraphcontext          # `cgc` on PATH (~/.local/bin)
+cgc doctor
+cgc index --force --summarize .       # .cgcignore skips target/ + media
+cgc find name StoryRunner
+cgc analyze callers advance
+grok mcp add codegraphcontext ~/.local/bin/cgc -- mcp start
+```
+
 ---
 
 # adventure-engine (repo)
