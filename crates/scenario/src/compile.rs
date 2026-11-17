@@ -35,6 +35,8 @@ pub(crate) enum Ir {
         who: Option<SmolStr>,
         /// Line text.
         text: SmolStr,
+        /// Optional stable line id (from `SaySpec::id`).
+        id: Option<SmolStr>,
     },
     /// Presentation: background change.
     Scene(crate::stmt::SceneSpec),
@@ -139,10 +141,12 @@ fn lower_block(stmts: &[Stmt], out: &mut Vec<Ir>, fixups: &mut Vec<(usize, SmolS
             Stmt::Say(spec) => out.push(Ir::Say {
                 who: spec.who.clone(),
                 text: spec.text.clone(),
+                id: spec.id.clone(),
             }),
             Stmt::Narrate(text) => out.push(Ir::Say {
                 who: None,
                 text: text.clone(),
+                id: None,
             }),
             Stmt::Scene(spec) => out.push(Ir::Scene(spec.clone())),
             Stmt::Show(spec) => out.push(Ir::Show(spec.clone())),

@@ -66,7 +66,7 @@ fn run_story(choose_left: bool) -> Result<(Option<String>, Vec<Action>, Vec<Stri
     let mut lines = Vec::new();
     loop {
         match step {
-            StepResult::Say { who, text } => {
+            StepResult::Say { who, text, .. } => {
                 let prefix = who.as_deref().map(|w| format!("{w}: ")).unwrap_or_default();
                 lines.push(format!("{prefix}{text}"));
                 step = runner

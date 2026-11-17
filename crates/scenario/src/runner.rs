@@ -156,6 +156,8 @@ pub enum StepResult {
         who: Option<SmolStr>,
         /// Line text (markup resolved by the `ui` crate, 8B.2).
         text: String,
+        /// Stable line id when the story gives one (`SaySpec::id`).
+        id: Option<SmolStr>,
     },
     /// A choice menu. Choose via [`StoryRunner::choose`].
     Menu {
@@ -293,11 +295,12 @@ impl StoryRunner {
         }
         let blocked_ip = (pos.ip - 1) as usize;
         match &self.program.instrs[blocked_ip] {
-            Ir::Say { who, text } => {
+            Ir::Say { who, text, id } => {
                 self.blocked = Some(Blocked::Say);
                 Ok(StepResult::Say {
                     who: who.clone(),
                     text: text.to_string(),
+                    id: id.clone(),
                 })
             }
             Ir::Pause { seconds } => {
@@ -544,10 +547,11 @@ impl StoryRunner {
                 }
             };
             match &self.program.instrs[ip] {
-                Ir::Say { who, text } => {
+                Ir::Say { who, text, id } => {
                     let step = StepResult::Say {
                         who: who.clone(),
                         text: text.to_string(),
+                        id: id.clone(),
                     };
                     self.position.as_mut().expect("position checked above").ip += 1;
                     self.blocked = Some(Blocked::Say);
@@ -770,7 +774,7 @@ mod tests {
             .start(&ctx.host, &mut ctx.vars, &mut ctx.tags)
             .unwrap();
         assert!(
-            matches!(step, StepResult::Say { who: None, ref text } if text == "Another day begins.")
+            matches!(step, StepResult::Say { who: None, ref text, .. } if text == "Another day begins.")
         );
         let actions = runner.drain_actions();
         assert_eq!(actions.len(), 2);
@@ -879,12 +883,12 @@ mod tests {
         let step = runner
             .advance(&ctx.host, &mut ctx.vars, &mut ctx.tags)
             .unwrap();
-        assert!(matches!(step, StepResult::Say { who: None, ref text } if text == "Helper ran."));
+        assert!(matches!(step, StepResult::Say { who: None, ref text, .. } if text == "Helper ran."));
         let step = runner
             .advance(&ctx.host, &mut ctx.vars, &mut ctx.tags)
             .unwrap();
         assert!(
-            matches!(step, StepResult::Say { who: None, ref text } if text == "Back from helper.")
+            matches!(step, StepResult::Say { who: None, ref text, .. } if text == "Back from helper.")
         );
         // End of "secret" label = implicit Return at stack bottom → finish.
         let step = runner

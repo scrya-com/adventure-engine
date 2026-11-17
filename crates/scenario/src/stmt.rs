@@ -113,6 +113,11 @@ pub struct SaySpec {
     pub who: Option<SmolStr>,
     /// The line (markup like `{i}…{/i}` is parsed by the `ui` crate, 8B.2).
     pub text: SmolStr,
+    /// Optional stable line id (`id: Some("nikki_001")`). Hosts key per-line
+    /// assets (talking clips, voice) on it so they survive text edits.
+    /// Absent in generated stories; `None` then.
+    #[serde(default)]
+    pub id: Option<SmolStr>,
 }
 
 /// Background change for [`Stmt::Scene`].
@@ -314,6 +319,23 @@ mod tests {
     },
 )
 "#;
+
+    #[test]
+    fn say_id_is_optional() {
+        let src = r#"(id: "t", entry: "a", labels: { "a": [
+            Say(( who: Some("n"), text: "no id" )),
+            Say(( who: Some("n"), text: "with id", id: Some("n_001") )),
+        ] })"#;
+        let story = Story::from_ron_str(src).unwrap();
+        let ids: Vec<_> = story.labels["a"]
+            .iter()
+            .map(|s| match s {
+                Stmt::Say(sp) => sp.id.clone(),
+                _ => unreachable!(),
+            })
+            .collect();
+        assert_eq!(ids, vec![None, Some("n_001".into())]);
+    }
 
     #[test]
     fn parses_sample_with_implicit_some() {
